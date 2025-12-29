@@ -13,6 +13,8 @@ This skill is meant for the **parent** Codex agent in interactive mode.
 - The change is **cross-cutting** (multiple files/modules) or likely needs **specialist** attention (security/perf/research).
 - The user explicitly asks to delegate / use subagents.
 
+**Default rule:** if the request includes **code changes** *and* (tests or docs), call `delegate_autopilot` **before** running shell commands or editing files.
+
 ## When not to call
 - The user is asking a **simple question** or wants a short explanation.
 - The change is **tiny and local** (single file, trivial edit) and you can do it directly.
