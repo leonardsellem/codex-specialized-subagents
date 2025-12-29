@@ -27,7 +27,7 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 
 ## Progress
 
-- [ ] (2025-12-29 21:05 CET) Land plan in-repo (baseline for implementation).
+- [x] (2025-12-29 21:05 CET) Land plan in-repo (baseline for implementation). (`47dc4ff`)
 - [ ] (2025-12-29 21:05 CET) Implement `delegate.autopilot` and global skill-driven calling behavior.
 
 ## Surprises & Discoveries
