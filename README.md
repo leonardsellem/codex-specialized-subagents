@@ -190,4 +190,4 @@ tool_timeout_sec = 600
 
 ## License
 
-TBD (choose one and update this section).
+MIT
