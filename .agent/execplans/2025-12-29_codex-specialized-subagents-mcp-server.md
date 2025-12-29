@@ -34,6 +34,7 @@ How you can see it working (end state):
   - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/external-research.md`
   - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/repo-scan.md`
 - [x] (2025-12-29 19:58) Milestone 1: MCP tool stubs + local client test (no `codex exec`).
+- [x] (2025-12-29 20:03) Docs sync: updated `README.md` to reflect `delegate.*` stubs and added `npm test` to Quickstart.
 - [ ] Milestone 2: Skill discovery + selection (+ persisted JSON artifacts).
 - [ ] Milestone 3: `codex exec` runner for `delegate.run` (events + last message + result summary).
 - [ ] Milestone 4: `delegate.resume`.
