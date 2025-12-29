@@ -36,11 +36,14 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 - [x] (2025-12-29 21:20 CET) Task 5a: Support `delegator_exclude: true` skill frontmatter (exclude from delegation index). (`6250477`)
 - [x] (2025-12-29 21:22 CET) Task 5b: Add repo-local `delegation-autopilot` skill (template for global install). (`9611210`)
 - [x] (2025-12-29 21:24 CET) Task 5c: Update docs (`README.md`, `AGENTS.md`) for `delegate.autopilot` + global skill install. (`553e8cd`)
+- [x] (2025-12-29 21:28 CET) Fix `tsc` build errors; `npm test`, `npm run build`, `npm run lint` pass. (`a7b9484`)
 
 ## Surprises & Discoveries
 
 - Observation: …
   Evidence: …
+- Observation: `npm test` (via `tsx`) passed while `tsc` failed due to an unexported type import + inferred union widening.
+  Evidence: `npm run build` failed before `a7b9484`, then passed after.
 
 ## Decision Log
 
