@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Auto-generate a commit message from the staged diff.
+# This hook is designed to be *non-blocking* by default: if generation fails, you can still commit manually.
+
+set -euo pipefail
+
+MSG_FILE="${1:-}"
+COMMIT_SOURCE="${2:-}"
+
+# Only run for "normal" commits (no -m/-F, no merges, no squash, no amend templates).
+# Git docs: COMMIT_SOURCE can be message|template|merge|squash|commit or empty.
+if [[ -n "${COMMIT_SOURCE}" ]]; then
+  exit 0
+fi
+
+if [[ -z "${MSG_FILE}" || ! -f "${MSG_FILE}" ]]; then
+  exit 0
+fi
+
+# If the message already has a non-comment line, don't overwrite it.
+if grep -qE '^[^#[:space:]]' "${MSG_FILE}"; then
+  exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "${REPO_ROOT}" ]]; then
+  exit 0
+fi
+
+PY_SCRIPT="${REPO_ROOT}/scripts/ai_commit_message.py"
+if [[ ! -f "${PY_SCRIPT}" ]]; then
+  exit 0
+fi
+
+# Don't block commits by default.
+python3 "${PY_SCRIPT}" --write "${MSG_FILE}" || true
+exit 0
