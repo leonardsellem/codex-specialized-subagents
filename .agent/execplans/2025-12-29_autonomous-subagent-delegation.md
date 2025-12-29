@@ -50,6 +50,8 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
   Evidence: `npm run build` failed before `a7b9484`, then passed after.
 - Observation: `codex exec` failed with HTTP 400 because at least one MCP tool name didn’t match the OpenAI tool-name regex `^[a-zA-Z0-9_-]+$` (dots are rejected).
   Evidence: `codex exec` failed with this MCP enabled, and succeeded when run with `-c mcp_servers.codex-specialized-subagents.enabled=false`.
+- Observation: `codex mcp list` prints full MCP args, which may include secrets (e.g., API keys for other MCP servers).
+  Evidence: Local run printed a Context7 API key in the `context7` MCP args; rotate if exposed.
 
 ## Decision Log
 
@@ -67,7 +69,14 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 
 ## Outcomes & Retrospective
 
-(Fill in after shipping.)
+- Shipped `delegate_autopilot`: deterministic routing + artifact-first orchestration for (optional) multi-agent runs (`src/lib/delegation/*`, `src/server.ts`).
+- Shipped `delegator_exclude: true` to prevent parent-only skills from being indexed/passed to delegated subagents.
+- Added repo-local `delegation-autopilot` skill template + install docs for global `${CODEX_HOME:-~/.codex}/skills`.
+- Renamed tools to `delegate_*` to satisfy Codex/OpenAI tool-name constraints (dot-named tools caused `codex exec` HTTP 400).
+- Verification: `npm test`, `npm run build`, `npm run lint` pass; `codex exec` successfully called `delegate_autopilot` and produced a run dir under `~/.codex/delegator/runs/...`.
+
+What didn’t (yet):
+- “Natural” tool calling is still model-driven; this repo can’t force Codex to always choose delegation. The global skill + tool design are best-effort nudges.
 
 ## Context and Orientation
 
