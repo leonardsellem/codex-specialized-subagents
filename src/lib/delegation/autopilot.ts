@@ -4,7 +4,8 @@ import { promises as fs } from "node:fs";
 import { runCodexExec, type RunCodexExecResult } from "../codex/runCodexExec.js";
 import { SubagentOutputSchema } from "../codex/subagentOutput.js";
 import { createRunDir, writeJsonFile, writeTextFile } from "../runDirs.js";
-import { discoverSkills, type SkillIndex } from "../skills/discover.js";
+import { discoverSkills } from "../skills/discover.js";
+import type { SkillIndex } from "../skills/types.js";
 import { selectSkills } from "../skills/select.js";
 import { routeAutopilotTask } from "./route.js";
 import { runJobs } from "./runJobs.js";
@@ -340,7 +341,7 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
       const phaseResult = await runJobs(phaseJobs, {
         maxParallel,
         signal: options.signal,
-        runJob: async (job) => {
+        runJob: async (job): Promise<AutopilotJobResult> => {
           try {
             return await runAutopilotJob({
               parentRunDir: runDir,
@@ -465,4 +466,3 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
     error,
   };
 }
-
