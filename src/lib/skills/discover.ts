@@ -91,6 +91,7 @@ async function indexSkills(root: string, origin: SkillOrigin): Promise<SkillInde
   for (const filePath of files) {
     try {
       const frontmatter = await parseSkillMarkdownFile(filePath);
+      if (frontmatter.delegator_exclude === true) continue;
       const name = frontmatter.name?.trim() || fallbackSkillName(filePath);
       const description = frontmatter.description?.trim() || undefined;
 

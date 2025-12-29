@@ -34,3 +34,14 @@ description: |
   assert.equal(parsed.description, "Line one\nLine two");
 });
 
+test("parseSkillMarkdown parses delegator_exclude boolean flag", () => {
+  const parsed = parseSkillMarkdown(`---
+name: parent-only
+description: Parent-only skill
+delegator_exclude: true
+---
+
+# Body
+`);
+  assert.equal(parsed.delegator_exclude, true);
+});

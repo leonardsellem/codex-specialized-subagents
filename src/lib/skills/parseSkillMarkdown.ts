@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 export type SkillFrontmatter = {
   name?: string;
   description?: string;
+  delegator_exclude?: boolean;
 };
 
 function unquote(value: string): string {
@@ -82,10 +83,14 @@ export function parseSkillMarkdown(markdown: string): SkillFrontmatter {
 
   const name = parsed.name?.trim();
   const description = parsed.description?.trim();
+  const delegatorExcludeRaw = parsed.delegator_exclude?.trim().toLowerCase();
+  const delegator_exclude =
+    delegatorExcludeRaw === "true" ? true : delegatorExcludeRaw === "false" ? false : undefined;
 
   return {
     name: name || undefined,
     description: description || undefined,
+    delegator_exclude,
   };
 }
 
@@ -93,4 +98,3 @@ export async function parseSkillMarkdownFile(skillMarkdownPath: string): Promise
   const content = await fs.readFile(skillMarkdownPath, "utf8");
   return parseSkillMarkdown(content);
 }
-

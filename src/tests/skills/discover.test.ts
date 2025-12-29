@@ -37,12 +37,18 @@ test("discoverSkills indexes repo + global skills with origins", async () => {
     const cwd = path.join(projectRoot, "nested");
 
     await fs.mkdir(path.join(repoSkillsRoot, "repo-skill"), { recursive: true });
+    await fs.mkdir(path.join(repoSkillsRoot, "parent-only-skill"), { recursive: true });
     await fs.mkdir(path.join(globalSkillsRoot, "global-skill"), { recursive: true });
     await fs.mkdir(cwd, { recursive: true });
 
     await fs.writeFile(
       path.join(repoSkillsRoot, "repo-skill", "SKILL.md"),
       `---\nname: repo-skill\ndescription: Repo description\n---\n`,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(repoSkillsRoot, "parent-only-skill", "SKILL.md"),
+      `---\nname: parent-only-skill\ndescription: Excluded from delegation\ndelegator_exclude: true\n---\n`,
       "utf8",
     );
     await fs.writeFile(
@@ -65,6 +71,6 @@ test("discoverSkills indexes repo + global skills with origins", async () => {
     const byName = Object.fromEntries(index.skills.map((s) => [s.name, s]));
     assert.equal(byName["repo-skill"].origin, "repo");
     assert.equal(byName["global-skill"].origin, "global");
+    assert.equal(byName["parent-only-skill"], undefined);
   });
 });
-
