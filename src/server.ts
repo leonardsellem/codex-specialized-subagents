@@ -7,6 +7,8 @@ import { z } from "zod/v4";
 import { createRunDir, writeJsonFile, writeTextFile } from "./lib/runDirs.js";
 import { runCodexExec, runCodexExecResume } from "./lib/codex/runCodexExec.js";
 import { SubagentOutputSchema } from "./lib/codex/subagentOutput.js";
+import { runAutopilot } from "./lib/delegation/autopilot.js";
+import { AutopilotInputSchema, AutopilotToolOutputSchema } from "./lib/delegation/types.js";
 import { discoverSkills } from "./lib/skills/discover.js";
 import { selectSkills } from "./lib/skills/select.js";
 
@@ -75,6 +77,64 @@ export async function startServer(): Promise<void> {
     name: "codex-specialized-subagents",
     version: "0.1.0",
   });
+
+  server.registerTool(
+    "delegate.autopilot",
+    {
+      title: "Delegate Autopilot",
+      description:
+        "Decide whether delegation is worthwhile, and if so orchestrate one or more specialist Codex sub-agent runs.",
+      inputSchema: AutopilotInputSchema,
+      outputSchema: AutopilotToolOutputSchema,
+    },
+    async (args, extra) => {
+      const startedAt = new Date();
+      try {
+        const output = await runAutopilot(args, { signal: extra.signal });
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Run directory: ${output.run_dir}`,
+            },
+          ],
+          structuredContent: output,
+        };
+      } catch (err) {
+        const finishedAt = new Date();
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `delegate.autopilot failed: ${message}`,
+            },
+          ],
+          structuredContent: {
+            run_id: "unknown",
+            run_dir: "unknown",
+            decision: { should_delegate: false, reason: "Autopilot failed." },
+            plan: { jobs: [] },
+            jobs: [],
+            aggregate: {
+              summary: "Autopilot failed.",
+              deliverables: [],
+              open_questions: [],
+              next_actions: [],
+            },
+            artifacts: [],
+            timing: {
+              started_at: startedAt.toISOString(),
+              finished_at: finishedAt.toISOString(),
+              duration_ms: finishedAt.getTime() - startedAt.getTime(),
+            },
+            status: "failed",
+            error: message,
+          },
+        };
+      }
+    },
+  );
 
   server.registerTool(
     "delegate.run",

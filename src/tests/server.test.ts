@@ -13,6 +13,13 @@ type DelegateToolOutput = {
   subagent_thread_id: string | null;
 };
 
+type AutopilotToolOutput = {
+  run_id: string;
+  run_dir: string;
+  decision: { should_delegate: boolean };
+  jobs: Array<{ job_id: string; run_dir: string; subagent_thread_id: string | null }>;
+};
+
 const RUN_CODEX_INTEGRATION_TESTS = process.env.RUN_CODEX_INTEGRATION_TESTS === "1";
 
 async function withTmpDir<T>(
@@ -62,6 +69,7 @@ test("mcp server registers delegate tools", async () => {
       const toolList = await client.listTools();
       assert.ok(toolList.tools.some((t) => t.name === "delegate.run"));
       assert.ok(toolList.tools.some((t) => t.name === "delegate.resume"));
+      assert.ok(toolList.tools.some((t) => t.name === "delegate.autopilot"));
     });
   });
 });
@@ -127,6 +135,44 @@ test(
       assert.ok(resumeOutput.run_dir.includes(`${path.sep}delegator${path.sep}runs${path.sep}`));
       await fs.rm(runOutput.run_dir, { recursive: true, force: true });
       await fs.rm(resumeOutput.run_dir, { recursive: true, force: true });
+
+      const autopilotResult = await client.callTool({
+        name: "delegate.autopilot",
+        arguments: {
+          task: "This is a cross-cutting request involving tests and README. Do not change files. Return JSON with summary='ok-autopilot' and empty arrays for deliverables/open_questions/next_actions.",
+          cwd: process.cwd(),
+          sandbox: "read-only",
+          skills_mode: "none",
+          include_repo_skills: false,
+          include_global_skills: false,
+          max_agents: 1,
+          max_parallel: 1,
+        },
+      });
+
+      assert.ok(autopilotResult.structuredContent);
+      const autopilotOutput = autopilotResult.structuredContent as unknown as AutopilotToolOutput;
+      assert.ok(autopilotOutput.run_id);
+      assert.ok(autopilotOutput.run_dir);
+      assert.equal(autopilotOutput.decision.should_delegate, true);
+      assert.equal(autopilotOutput.jobs.length, 1);
+
+      await fs.access(path.join(autopilotOutput.run_dir, "request.json"));
+      await fs.access(path.join(autopilotOutput.run_dir, "skills_index.json"));
+      await fs.access(path.join(autopilotOutput.run_dir, "autopilot_decision.json"));
+      await fs.access(path.join(autopilotOutput.run_dir, "autopilot_plan.json"));
+      await fs.access(path.join(autopilotOutput.run_dir, "autopilot_aggregate.json"));
+
+      const job = autopilotOutput.jobs[0]!;
+      await fs.access(path.join(job.run_dir, "request.json"));
+      await fs.access(path.join(job.run_dir, "selected_skills.json"));
+      await fs.access(path.join(job.run_dir, "subagent_prompt.txt"));
+      await fs.access(path.join(job.run_dir, "events.jsonl"));
+      await fs.access(path.join(job.run_dir, "stderr.log"));
+      await fs.access(path.join(job.run_dir, "last_message.json"));
+      await fs.access(path.join(job.run_dir, "result.json"));
+
+      await fs.rm(autopilotOutput.run_dir, { recursive: true, force: true });
     });
   },
 );
