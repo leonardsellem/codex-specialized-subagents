@@ -2,7 +2,7 @@
 
 MCP server that lets Codex delegate to isolated codex exec sub-agents, selecting repo+global skills automatically.
 
-Status: `delegate.run` is wired to `codex exec` (artifact-first); `delegate.resume` is still stubbed. See `.agent/execplans/2025-12-29_codex-specialized-subagents-mcp-server.md`.
+Status: `delegate.run` + `delegate.resume` are wired to `codex exec` / `codex exec resume` (artifact-first). See `.agent/execplans/2025-12-29_codex-specialized-subagents-mcp-server.md`.
 
 ## Quickstart
 
@@ -64,7 +64,7 @@ codex mcp list
 ## What works today
 
 - `delegate.run` runs a Codex sub-agent via `codex exec` and writes artifacts including `request.json`, `skills_index.json`, `selected_skills.json`, `subagent_prompt.txt`, `events.jsonl`, `stderr.log`, `last_message.json`, `result.json`.
-- `delegate.resume` is still stubbed (creates a run directory and writes `request.json`, `skills_index.json`, `selected_skills.json`).
+- `delegate.resume` resumes an existing `thread_id` via `codex exec resume` and writes a new run directory with similar artifacts.
 - Run directories are created under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`.
 
 ## Project structure
