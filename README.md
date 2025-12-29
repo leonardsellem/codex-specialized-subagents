@@ -2,7 +2,7 @@
 
 MCP server that lets Codex delegate to isolated codex exec sub-agents, selecting repo+global skills automatically.
 
-Status: `delegate.run`, `delegate.resume`, and `delegate.autopilot` are wired to `codex exec` / `codex exec resume` (artifact-first). See `.agent/execplans/archive/2025-12-29_codex-specialized-subagents-mcp-server.md` for the shipped v1 ExecPlan.
+Status: `delegate_run`, `delegate_resume`, and `delegate_autopilot` are wired to `codex exec` / `codex exec resume` (artifact-first). See `.agent/execplans/archive/2025-12-29_codex-specialized-subagents-mcp-server.md` for the shipped v1 ExecPlan.
 
 ## Quickstart
 
@@ -52,9 +52,9 @@ codex mcp list
 ## What this will provide (v1)
 
 - MCP tools:
-  - `delegate.run` — run a specialist sub-agent via `codex exec`
-  - `delegate.resume` — resume a prior sub-agent thread via `codex exec resume`
-  - `delegate.autopilot` — decide whether to delegate and, if yes, orchestrate one or more sub-agent runs
+  - `delegate_run` — run a specialist sub-agent via `codex exec`
+  - `delegate_resume` — resume a prior sub-agent thread via `codex exec resume`
+  - `delegate_autopilot` — decide whether to delegate and, if yes, orchestrate one or more sub-agent runs
 - Skill selection:
   - repo-local `.codex/skills` (nearest ancestor of the delegated `cwd`)
   - global `${CODEX_HOME:-~/.codex}/skills`
@@ -64,14 +64,14 @@ codex mcp list
 
 ## What works today
 
-- `delegate.run` runs a Codex sub-agent via `codex exec` and writes artifacts including `request.json`, `skills_index.json`, `selected_skills.json`, `subagent_prompt.txt`, `events.jsonl`, `stderr.log`, `last_message.json`, `result.json`.
-- `delegate.resume` resumes an existing `thread_id` via `codex exec resume` and writes a new run directory with similar artifacts.
-- `delegate.autopilot` creates a parent run directory, writes `autopilot_*.json` artifacts, and (when delegation is chosen) runs sub-agents under `subruns/<job_id>/`.
+- `delegate_run` runs a Codex sub-agent via `codex exec` and writes artifacts including `request.json`, `skills_index.json`, `selected_skills.json`, `subagent_prompt.txt`, `events.jsonl`, `stderr.log`, `last_message.json`, `result.json`.
+- `delegate_resume` resumes an existing `thread_id` via `codex exec resume` and writes a new run directory with similar artifacts.
+- `delegate_autopilot` creates a parent run directory, writes `autopilot_*.json` artifacts, and (when delegation is chosen) runs sub-agents under `subruns/<job_id>/`.
 - Run directories are created under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`.
 
 ## MCP tools (v1)
 
-### `delegate.run`
+### `delegate_run`
 
 Input:
 - `task`: string (required)
@@ -93,15 +93,15 @@ Output (structured):
 - `timing`: `{ started_at, finished_at, duration_ms }`
 - `status`: `"completed" | "failed" | "cancelled"`, `error`
 
-### `delegate.resume`
+### `delegate_resume`
 
-Input: same as `delegate.run`, plus:
+Input: same as `delegate_run`, plus:
 - `thread_id`: string (required)
 - `task`: string (optional follow-up prompt)
 
-Output: same shape as `delegate.run`.
+Output: same shape as `delegate_run`.
 
-### `delegate.autopilot`
+### `delegate_autopilot`
 
 Input:
 - `task`: string (required)
@@ -130,16 +130,16 @@ Output (structured):
 Each tool call creates a new directory under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/` containing:
 - `request.json`
 - `skills_index.json`
-- `selected_skills.json` (only for `delegate.run` / `delegate.resume`)
-- `subagent_prompt.txt` (only for `delegate.run` / `delegate.resume`)
-- `subagent_output.schema.json` (only for `delegate.run` / `delegate.resume`)
-- `events.jsonl` (only for `delegate.run` / `delegate.resume`)
-- `stderr.log` (only for `delegate.run` / `delegate.resume`)
-- `last_message.json` (only for `delegate.run` / `delegate.resume`)
-- `result.json` (only for `delegate.run` / `delegate.resume`)
+- `selected_skills.json` (only for `delegate_run` / `delegate_resume`)
+- `subagent_prompt.txt` (only for `delegate_run` / `delegate_resume`)
+- `subagent_output.schema.json` (only for `delegate_run` / `delegate_resume`)
+- `events.jsonl` (only for `delegate_run` / `delegate_resume`)
+- `stderr.log` (only for `delegate_run` / `delegate_resume`)
+- `last_message.json` (only for `delegate_run` / `delegate_resume`)
+- `result.json` (only for `delegate_run` / `delegate_resume`)
 - `thread.json` (best-effort; present when the session/thread id is detected)
 
-For `delegate.autopilot` runs, the parent run directory also contains:
+For `delegate_autopilot` runs, the parent run directory also contains:
 - `autopilot_decision.json`
 - `autopilot_plan.json`
 - `autopilot_aggregate.json`
@@ -147,7 +147,7 @@ For `delegate.autopilot` runs, the parent run directory also contains:
 
 ## “Natural” interactive delegation (global skill install)
 
-This repo can’t force Codex to call tools. To make delegation feel “natural” in interactive mode, install the `delegation-autopilot` skill globally and let Codex decide when to call `delegate.autopilot`.
+This repo can’t force Codex to call tools. To make delegation feel “natural” in interactive mode, install the `delegation-autopilot` skill globally and let Codex decide when to call `delegate_autopilot`.
 
 1) Copy the skill to your global Codex skills directory:
 
@@ -159,7 +159,7 @@ cp .codex/skills/delegation-autopilot/SKILL.md "${CODEX_HOME:-$HOME/.codex}/skil
 2) In Codex interactive, try:
 
 - Should delegate: “Refactor the MCP server and update tests + README.”
-- Should not delegate: “What does the `delegate.run` tool do?”
+- Should not delegate: “What does the `delegate_run` tool do?”
 
 ## Codex MCP config (timeouts)
 

@@ -1,6 +1,6 @@
 ---
 name: delegation-autopilot
-description: In Codex interactive mode, call delegate.autopilot automatically for multi-step or cross-cutting requests (tests + docs + code), otherwise work normally.
+description: In Codex interactive mode, call delegate_autopilot automatically for multi-step or cross-cutting requests (tests + docs + code), otherwise work normally.
 delegator_exclude: true
 ---
 
@@ -8,7 +8,7 @@ delegator_exclude: true
 
 This skill is meant for the **parent** Codex agent in interactive mode.
 
-## When to call `delegate.autopilot`
+## When to call `delegate_autopilot`
 - The user request is **multi-step** ("and", "then", "also", "plus") or touches **multiple areas** (code + tests + docs).
 - The change is **cross-cutting** (multiple files/modules) or likely needs **specialist** attention (security/perf/research).
 - The user explicitly asks to delegate / use subagents.
@@ -18,7 +18,7 @@ This skill is meant for the **parent** Codex agent in interactive mode.
 - The change is **tiny and local** (single file, trivial edit) and you can do it directly.
 
 ## How to call (minimal)
-Call MCP tool `delegate.autopilot` with:
+Call MCP tool `delegate_autopilot` with:
 - `task`: the user request (verbatim)
 - `cwd`: current workspace directory (optional; defaults are OK)
 
@@ -33,5 +33,4 @@ Optional knobs:
 
 ## Safety
 - Never paste secrets from `${CODEX_HOME:-~/.codex}` or any local config.
-- Do not recurse: delegated subagents must not call any `delegate.*` tools.
-
+- Do not recurse: delegated subagents must not call any `delegate_*` tools.
