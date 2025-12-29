@@ -19,6 +19,10 @@ export type RunCodexExecOptions = {
   configOverrides?: string[];
 };
 
+export type RunCodexExecResumeOptions = RunCodexExecOptions & {
+  threadId: string;
+};
+
 export type RunCodexExecResult = {
   started_at: string;
   finished_at: string;
@@ -27,6 +31,7 @@ export type RunCodexExecResult = {
   exit_code: number | null;
   signal: string | null;
   thread_id: string | null;
+  parent_thread_id?: string;
   artifacts: {
     subagent_output_schema_path: string;
     events_path: string;
@@ -44,7 +49,11 @@ function extractThreadId(event: unknown): string | null {
 
   const direct =
     (typeof record.thread_id === "string" && record.thread_id) ||
-    (typeof record.threadId === "string" && record.threadId);
+    (typeof record.threadId === "string" && record.threadId) ||
+    (typeof record.session_id === "string" && record.session_id) ||
+    (typeof record.sessionId === "string" && record.sessionId) ||
+    (typeof record.conversation_id === "string" && record.conversation_id) ||
+    (typeof record.conversationId === "string" && record.conversationId);
   if (direct) return direct;
 
   const data = record.data;
@@ -52,7 +61,11 @@ function extractThreadId(event: unknown): string | null {
     const dataRecord = data as Record<string, unknown>;
     const nested =
       (typeof dataRecord.thread_id === "string" && dataRecord.thread_id) ||
-      (typeof dataRecord.threadId === "string" && dataRecord.threadId);
+      (typeof dataRecord.threadId === "string" && dataRecord.threadId) ||
+      (typeof dataRecord.session_id === "string" && dataRecord.session_id) ||
+      (typeof dataRecord.sessionId === "string" && dataRecord.sessionId) ||
+      (typeof dataRecord.conversation_id === "string" && dataRecord.conversation_id) ||
+      (typeof dataRecord.conversationId === "string" && dataRecord.conversationId);
     if (nested) return nested;
   }
 
@@ -61,7 +74,9 @@ function extractThreadId(event: unknown): string | null {
     const threadRecord = thread as Record<string, unknown>;
     const nested =
       (typeof threadRecord.id === "string" && threadRecord.id) ||
-      (typeof threadRecord.thread_id === "string" && threadRecord.thread_id);
+      (typeof threadRecord.thread_id === "string" && threadRecord.thread_id) ||
+      (typeof threadRecord.session_id === "string" && threadRecord.session_id) ||
+      (typeof threadRecord.conversation_id === "string" && threadRecord.conversation_id);
     if (nested) return nested;
   }
 
@@ -72,7 +87,10 @@ async function ensureParentDir(filePath: string): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 }
 
-export async function runCodexExec(options: RunCodexExecOptions): Promise<RunCodexExecResult> {
+async function runCodexExecInternal(options: RunCodexExecOptions & {
+  subcommandArgs?: string[];
+  parentThreadId?: string;
+}): Promise<RunCodexExecResult> {
   const startedAt = new Date();
 
   const subagentOutputSchemaPath = path.join(options.runDir, "subagent_output.schema.json");
@@ -114,6 +132,10 @@ export async function runCodexExec(options: RunCodexExecOptions): Promise<RunCod
 
   for (const override of options.configOverrides ?? []) {
     args.push("-c", override);
+  }
+
+  if (options.subcommandArgs && options.subcommandArgs.length > 0) {
+    args.push(...options.subcommandArgs);
   }
 
   // Read prompt from stdin to avoid shell escaping and arg length issues.
@@ -215,6 +237,7 @@ export async function runCodexExec(options: RunCodexExecOptions): Promise<RunCod
     exit_code: exitCode,
     signal,
     thread_id: threadId,
+    ...(options.parentThreadId ? { parent_thread_id: options.parentThreadId } : {}),
     artifacts: {
       subagent_output_schema_path: subagentOutputSchemaPath,
       events_path: eventsPath,
@@ -228,4 +251,19 @@ export async function runCodexExec(options: RunCodexExecOptions): Promise<RunCod
 
   await writeJsonFile(resultPath, result);
   return result;
+}
+
+export async function runCodexExec(options: RunCodexExecOptions): Promise<RunCodexExecResult> {
+  return runCodexExecInternal(options);
+}
+
+export async function runCodexExecResume(
+  options: RunCodexExecResumeOptions,
+): Promise<RunCodexExecResult> {
+  const { threadId, ...rest } = options;
+  return runCodexExecInternal({
+    ...rest,
+    subcommandArgs: ["resume", threadId],
+    parentThreadId: threadId,
+  });
 }

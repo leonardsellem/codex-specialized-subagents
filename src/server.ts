@@ -5,7 +5,7 @@ import { promises as fs } from "node:fs";
 import { z } from "zod/v4";
 
 import { createRunDir, writeJsonFile, writeTextFile } from "./lib/runDirs.js";
-import { runCodexExec } from "./lib/codex/runCodexExec.js";
+import { runCodexExec, runCodexExecResume } from "./lib/codex/runCodexExec.js";
 import { SubagentOutputSchema } from "./lib/codex/subagentOutput.js";
 import { discoverSkills } from "./lib/skills/discover.js";
 import { selectSkills } from "./lib/skills/select.js";
@@ -81,7 +81,7 @@ export async function startServer(): Promise<void> {
     {
       title: "Delegate Run",
       description:
-        "Spawn a new specialist Codex sub-agent run (v1 stub: creates a run dir and writes request.json).",
+        "Spawn a new specialist Codex sub-agent run via `codex exec`, writing a run directory with artifacts.",
       inputSchema: DelegateRunInputSchema,
       outputSchema: DelegateToolOutputSchema,
     },
@@ -198,7 +198,6 @@ export async function startServer(): Promise<void> {
 
         const finishedAt = new Date();
 
-        let subagentOutput: unknown = null;
         let parsedSubagentOutput:
           | {
               summary: string;
@@ -210,8 +209,8 @@ export async function startServer(): Promise<void> {
 
         try {
           const raw = await fs.readFile(path.join(runDir, "last_message.json"), "utf8");
-          subagentOutput = JSON.parse(raw);
-          const validated = SubagentOutputSchema.safeParse(subagentOutput);
+          const parsed = JSON.parse(raw) as unknown;
+          const validated = SubagentOutputSchema.safeParse(parsed);
           if (validated.success) {
             parsedSubagentOutput = validated.data;
           }
@@ -324,17 +323,18 @@ export async function startServer(): Promise<void> {
     {
       title: "Delegate Resume",
       description:
-        "Resume an existing specialist Codex sub-agent thread (v1 stub: creates a run dir and writes request.json).",
+        "Resume an existing specialist Codex sub-agent thread via `codex exec resume`, writing a run directory with artifacts.",
       inputSchema: DelegateResumeInputSchema,
       outputSchema: DelegateToolOutputSchema,
     },
-    async (args) => {
+    async (args, extra) => {
       const startedAt = new Date();
       try {
         const { runId, runDir } = await createRunDir();
         const requestPath = path.join(runDir, "request.json");
         const skillsIndexPath = path.join(runDir, "skills_index.json");
         const selectedSkillsPath = path.join(runDir, "selected_skills.json");
+        const subagentPromptPath = path.join(runDir, "subagent_prompt.txt");
 
         await writeJsonFile(requestPath, {
           tool: "delegate.resume",
@@ -376,41 +376,170 @@ export async function startServer(): Promise<void> {
           errors: selection.errors,
         });
 
+        if (selection.errors.length > 0) {
+          const finishedAt = new Date();
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Failed to select skills: ${selection.errors.join("; ")}`,
+              },
+            ],
+            structuredContent: {
+              run_id: runId,
+              run_dir: runDir,
+              subagent_thread_id: args.thread_id,
+              selected_skills: selection.selected,
+              summary: "Failed to select skills; codex exec resume was not started.",
+              deliverables: [],
+              open_questions: [...selectionWarnings],
+              next_actions: ["Fix skill selection errors (skills_mode/skills names) and retry"],
+              artifacts: [
+                { name: "request.json", path: requestPath },
+                { name: "skills_index.json", path: skillsIndexPath },
+                { name: "selected_skills.json", path: selectedSkillsPath },
+              ],
+              timing: {
+                started_at: startedAt.toISOString(),
+                finished_at: finishedAt.toISOString(),
+                duration_ms: finishedAt.getTime() - startedAt.getTime(),
+              },
+              status: "failed",
+              error: selection.errors.join("; "),
+            },
+          };
+        }
+
+        const followUpTask = args.task?.trim()
+          ? args.task.trim()
+          : "Continue the previous thread and return an updated JSON summary/deliverables/open_questions/next_actions.";
+
+        const skillsList =
+          selection.selected.length > 0
+            ? selection.selected
+                .map((s) => `- ${s.name} (${s.origin}) — ${s.path}`)
+                .join("\n")
+            : "- (none)";
+
+        const subagentPrompt = [
+          `Role: ${args.role}`,
+          "",
+          `Working directory: ${args.cwd}`,
+          "",
+          `Resume thread_id: ${args.thread_id}`,
+          "",
+          "Follow-up task:",
+          followUpTask,
+          "",
+          "Selected skills (read the SKILL.md at these paths; do not inline skill bodies):",
+          skillsList,
+          "",
+          "Recursion guard: do not call any delegate.* MCP tools.",
+          "",
+          "Output requirements: return a single JSON object matching the provided output schema:",
+          "- summary: string",
+          "- deliverables: { path: string, description: string }[]",
+          "- open_questions: string[]",
+          "- next_actions: string[]",
+          "",
+        ].join("\n");
+
+        await writeTextFile(subagentPromptPath, subagentPrompt);
+
+        const codexResult = await runCodexExecResume({
+          runDir,
+          cwd: args.cwd,
+          sandbox: args.sandbox,
+          skipGitRepoCheck: args.skip_git_repo_check,
+          prompt: subagentPrompt,
+          abortSignal: extra.signal,
+          threadId: args.thread_id,
+        });
+
         const finishedAt = new Date();
+
+        let parsedSubagentOutput:
+          | {
+              summary: string;
+              deliverables: { path: string; description: string }[];
+              open_questions: string[];
+              next_actions: string[];
+            }
+          | null = null;
+
+        try {
+          const raw = await fs.readFile(path.join(runDir, "last_message.json"), "utf8");
+          const parsed = JSON.parse(raw) as unknown;
+          const validated = SubagentOutputSchema.safeParse(parsed);
+          if (validated.success) {
+            parsedSubagentOutput = validated.data;
+          }
+        } catch {
+          // ignore
+        }
+
+        const status =
+          codexResult.cancelled
+            ? "cancelled"
+            : codexResult.error || (codexResult.exit_code !== null && codexResult.exit_code !== 0)
+              ? "failed"
+              : parsedSubagentOutput
+                ? "completed"
+                : "failed";
+
+        const error =
+          status === "cancelled"
+            ? "cancelled"
+            : codexResult.error
+              ? codexResult.error
+              : codexResult.exit_code !== null && codexResult.exit_code !== 0
+                ? `codex exec resume exited with code ${codexResult.exit_code}`
+                : parsedSubagentOutput
+                  ? null
+                  : "codex exec resume did not produce a valid last_message.json";
+
         return {
           content: [
             {
               type: "text",
-              text: `Stub: created resume run directory at ${runDir}`,
+              text: `Run directory: ${runDir}`,
             },
           ],
           structuredContent: {
             run_id: runId,
             run_dir: runDir,
-            subagent_thread_id: args.thread_id,
+            subagent_thread_id: codexResult.thread_id ?? args.thread_id,
             selected_skills: selection.selected,
-            summary:
-              "Stub: created run directory, indexed skills, and wrote request.json (resume not implemented yet).",
-            deliverables: [],
-            open_questions: [...selectionWarnings],
-            next_actions: [
-              "Inspect run_dir artifacts",
-              ...(selection.errors.length > 0
-                ? ["Fix skill selection errors (skills_mode/skills names) and retry"]
-                : ["Implement resume via codex exec resume"]),
-            ],
+            summary: parsedSubagentOutput?.summary ?? "Delegated resume finished.",
+            deliverables: parsedSubagentOutput?.deliverables ?? [],
+            open_questions: parsedSubagentOutput
+              ? [...parsedSubagentOutput.open_questions, ...selectionWarnings]
+              : [...selectionWarnings],
+            next_actions: parsedSubagentOutput
+              ? ["Inspect run_dir artifacts", ...parsedSubagentOutput.next_actions]
+              : ["Inspect run_dir artifacts"],
             artifacts: [
               { name: "request.json", path: requestPath },
               { name: "skills_index.json", path: skillsIndexPath },
               { name: "selected_skills.json", path: selectedSkillsPath },
+              { name: "subagent_prompt.txt", path: subagentPromptPath },
+              { name: "events.jsonl", path: codexResult.artifacts.events_path },
+              { name: "stderr.log", path: codexResult.artifacts.stderr_path },
+              { name: "last_message.json", path: codexResult.artifacts.last_message_path },
+              { name: "thread.json", path: codexResult.artifacts.thread_path },
+              { name: "result.json", path: codexResult.artifacts.result_path },
+              {
+                name: "subagent_output.schema.json",
+                path: codexResult.artifacts.subagent_output_schema_path,
+              },
             ],
             timing: {
               started_at: startedAt.toISOString(),
               finished_at: finishedAt.toISOString(),
               duration_ms: finishedAt.getTime() - startedAt.getTime(),
             },
-            status: selection.errors.length > 0 ? "failed" : "completed",
-            error: selection.errors.length > 0 ? selection.errors.join("; ") : null,
+            status,
+            error,
           },
         };
       } catch (err) {

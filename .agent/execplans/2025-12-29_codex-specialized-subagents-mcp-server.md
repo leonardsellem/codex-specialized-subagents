@@ -37,7 +37,7 @@ How you can see it working (end state):
 - [x] (2025-12-29 20:03) Docs sync: updated `README.md` to reflect `delegate.*` stubs and added `npm test` to Quickstart.
 - [x] (2025-12-29 20:10) Milestone 2: Skill discovery + selection (+ persisted JSON artifacts).
 - [x] (2025-12-29 20:20) Milestone 3: `codex exec` runner for `delegate.run` (events + last message + result summary).
-- [ ] Milestone 4: `delegate.resume`.
+- [x] (2025-12-29 20:27) Milestone 4: `delegate.resume`.
 - [ ] Milestone 5: Tests + docs + manual smoke tests in 2 repos.
 
 ## Surprises & Discoveries
@@ -68,6 +68,9 @@ How you can see it working (end state):
 
 - Observation: `codex exec` supports reading the prompt from stdin when `PROMPT` is `-`, which avoids shell escaping/argument-length issues.
   Evidence: `codex exec --help` and `src/lib/codex/runCodexExec.ts`.
+
+- Observation: `codex exec` options (e.g., `-C`, `--sandbox`, `--json`, `--output-schema`, `-o`) work when placed before the `resume` subcommand (`codex exec [OPTIONS] resume <id> -`).
+  Evidence: `RUN_CODEX_INTEGRATION_TESTS=1 npm test` (integration test exercises `delegate.resume`).
 
 ## Decision Log
 
@@ -125,6 +128,10 @@ How you can see it working (end state):
 
 - Decision: Pipe `delegate.run` prompt via stdin (`codex exec -`) and persist it to `<run_dir>/subagent_prompt.txt` for reproducibility.
   Rationale: Avoids quoting/escaping bugs and provides an inspectable artifact for every delegated run.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: If `delegate.resume.task` is empty, default the follow-up prompt to “Continue the previous thread…” (still enforcing the JSON output schema).
+  Rationale: The tool schema allows an empty follow-up; we still need a concrete prompt to run `codex exec resume` non-interactively.
   Date/Author: 2025-12-29 / agent
 
 ## Outcomes & Retrospective
@@ -332,6 +339,7 @@ Runtime artifacts (produced by implementation):
 
 Verification transcripts (kept minimal; details via `git log` + tests):
 - (2025-12-29 20:19) `RUN_CODEX_INTEGRATION_TESTS=1 npm test` passed (includes `delegate.run` calling real `codex exec` and verifying artifacts).
+- (2025-12-29 20:26) `RUN_CODEX_INTEGRATION_TESTS=1 npm test` passed (includes `delegate.run` + `delegate.resume` end-to-end via `codex exec` / `codex exec resume`).
 
 ## Interfaces and Dependencies
 

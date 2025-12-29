@@ -67,11 +67,11 @@ test("mcp server registers delegate tools", async () => {
 });
 
 test(
-  "delegate.run runs codex exec and writes artifacts",
-  { skip: !RUN_CODEX_INTEGRATION_TESTS, timeout: 120_000 },
+  "delegate.run + delegate.resume run codex exec and write artifacts",
+  { skip: !RUN_CODEX_INTEGRATION_TESTS, timeout: 240_000 },
   async () => {
     await withClient(null, async (client) => {
-      const callResult = await client.callTool({
+      const runResult = await client.callTool({
         name: "delegate.run",
         arguments: {
           task: "Return JSON with summary='ok' and empty arrays for deliverables/open_questions/next_actions.",
@@ -80,63 +80,53 @@ test(
         },
       });
 
-      assert.ok(callResult.structuredContent);
-      const output = callResult.structuredContent as unknown as DelegateToolOutput;
-      assert.ok(output.run_id);
-      assert.ok(output.run_dir);
-      assert.ok(output.subagent_thread_id === null || typeof output.subagent_thread_id === "string");
+      assert.ok(runResult.structuredContent);
+      const runOutput = runResult.structuredContent as unknown as DelegateToolOutput;
+      assert.ok(runOutput.run_id);
+      assert.ok(runOutput.run_dir);
+      assert.ok(typeof runOutput.subagent_thread_id === "string" && runOutput.subagent_thread_id.length > 0);
 
       const requestJson = JSON.parse(
-        await fs.readFile(path.join(output.run_dir, "request.json"), "utf8"),
+        await fs.readFile(path.join(runOutput.run_dir, "request.json"), "utf8"),
       );
       assert.equal(requestJson.tool, "delegate.run");
 
-      await fs.access(path.join(output.run_dir, "skills_index.json"));
-      await fs.access(path.join(output.run_dir, "selected_skills.json"));
-      await fs.access(path.join(output.run_dir, "subagent_prompt.txt"));
-      await fs.access(path.join(output.run_dir, "events.jsonl"));
-      await fs.access(path.join(output.run_dir, "stderr.log"));
-      await fs.access(path.join(output.run_dir, "last_message.json"));
-      await fs.access(path.join(output.run_dir, "result.json"));
+      await fs.access(path.join(runOutput.run_dir, "skills_index.json"));
+      await fs.access(path.join(runOutput.run_dir, "selected_skills.json"));
+      await fs.access(path.join(runOutput.run_dir, "subagent_prompt.txt"));
+      await fs.access(path.join(runOutput.run_dir, "events.jsonl"));
+      await fs.access(path.join(runOutput.run_dir, "stderr.log"));
+      await fs.access(path.join(runOutput.run_dir, "last_message.json"));
+      await fs.access(path.join(runOutput.run_dir, "result.json"));
 
-      assert.ok(output.run_dir.includes(`${path.sep}delegator${path.sep}runs${path.sep}`));
-      await fs.rm(output.run_dir, { recursive: true, force: true });
-    });
-  },
-);
-
-test("delegate.resume creates a run dir and request.json", async () => {
-  await withTmpDir("codex-specialized-subagents-test-", async (tmpDir) => {
-    const codexHome = path.join(tmpDir, "codex_home");
-    await fs.mkdir(codexHome, { recursive: true });
-
-    await withClient(codexHome, async (client) => {
-      const toolList = await client.listTools();
-      assert.ok(toolList.tools.some((t) => t.name === "delegate.resume"));
-
-      const callResult = await client.callTool({
+      const resumeResult = await client.callTool({
         name: "delegate.resume",
         arguments: {
-          thread_id: "thread-123",
-          task: "follow up",
+          thread_id: runOutput.subagent_thread_id,
+          task: "Return JSON with summary='ok-resume' and empty arrays for deliverables/open_questions/next_actions.",
           cwd: process.cwd(),
+          skills_mode: "none",
         },
       });
 
-      assert.ok(callResult.structuredContent);
-      const output = callResult.structuredContent as unknown as DelegateToolOutput;
-      assert.ok(output.run_id);
-      assert.ok(output.run_dir);
-      assert.equal(output.subagent_thread_id, "thread-123");
+      assert.ok(resumeResult.structuredContent);
+      const resumeOutput = resumeResult.structuredContent as unknown as DelegateToolOutput;
+      assert.ok(resumeOutput.run_id);
+      assert.ok(resumeOutput.run_dir);
 
-      const requestJson = JSON.parse(
-        await fs.readFile(path.join(output.run_dir, "request.json"), "utf8"),
-      );
-      assert.equal(requestJson.tool, "delegate.resume");
-      assert.equal(requestJson.request.thread_id, "thread-123");
+      await fs.access(path.join(resumeOutput.run_dir, "request.json"));
+      await fs.access(path.join(resumeOutput.run_dir, "skills_index.json"));
+      await fs.access(path.join(resumeOutput.run_dir, "selected_skills.json"));
+      await fs.access(path.join(resumeOutput.run_dir, "subagent_prompt.txt"));
+      await fs.access(path.join(resumeOutput.run_dir, "events.jsonl"));
+      await fs.access(path.join(resumeOutput.run_dir, "stderr.log"));
+      await fs.access(path.join(resumeOutput.run_dir, "last_message.json"));
+      await fs.access(path.join(resumeOutput.run_dir, "result.json"));
 
-      await fs.access(path.join(output.run_dir, "skills_index.json"));
-      await fs.access(path.join(output.run_dir, "selected_skills.json"));
+      assert.ok(runOutput.run_dir.includes(`${path.sep}delegator${path.sep}runs${path.sep}`));
+      assert.ok(resumeOutput.run_dir.includes(`${path.sep}delegator${path.sep}runs${path.sep}`));
+      await fs.rm(runOutput.run_dir, { recursive: true, force: true });
+      await fs.rm(resumeOutput.run_dir, { recursive: true, force: true });
     });
-  });
-});
+  },
+);
