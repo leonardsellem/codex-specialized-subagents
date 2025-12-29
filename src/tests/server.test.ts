@@ -72,6 +72,9 @@ test("delegate.run creates a run dir and request.json", async () => {
       );
       assert.equal(requestJson.tool, "delegate.run");
       assert.equal(requestJson.request.task, "hello");
+
+      await fs.access(path.join(output.run_dir, "skills_index.json"));
+      await fs.access(path.join(output.run_dir, "selected_skills.json"));
     });
   });
 });
@@ -105,7 +108,9 @@ test("delegate.resume creates a run dir and request.json", async () => {
       );
       assert.equal(requestJson.tool, "delegate.resume");
       assert.equal(requestJson.request.thread_id, "thread-123");
+
+      await fs.access(path.join(output.run_dir, "skills_index.json"));
+      await fs.access(path.join(output.run_dir, "selected_skills.json"));
     });
   });
 });
-

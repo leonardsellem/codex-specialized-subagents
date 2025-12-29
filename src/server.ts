@@ -4,6 +4,8 @@ import path from "node:path";
 import { z } from "zod/v4";
 
 import { createRunDir, writeJsonFile } from "./lib/runDirs.js";
+import { discoverSkills } from "./lib/skills/discover.js";
+import { selectSkills } from "./lib/skills/select.js";
 
 const SandboxSchema = z.enum(["read-only", "workspace-write", "danger-full-access"]);
 const SkillsModeSchema = z.enum(["auto", "explicit", "none"]);
@@ -85,10 +87,36 @@ export async function startServer(): Promise<void> {
       try {
         const { runId, runDir } = await createRunDir();
         const requestPath = path.join(runDir, "request.json");
+        const skillsIndexPath = path.join(runDir, "skills_index.json");
+        const selectedSkillsPath = path.join(runDir, "selected_skills.json");
+
         await writeJsonFile(requestPath, {
           tool: "delegate.run",
           received_at: startedAt.toISOString(),
           request: args,
+        });
+
+        const skillsIndex = await discoverSkills({
+          cwd: args.cwd,
+          includeRepoSkills: args.include_repo_skills,
+          includeGlobalSkills: args.include_global_skills,
+        });
+        await writeJsonFile(skillsIndexPath, skillsIndex);
+
+        const selection = selectSkills({
+          mode: args.skills_mode,
+          skillsIndex: skillsIndex.skills,
+          task: args.task,
+          requested: args.skills,
+          maxSkills: args.max_skills,
+        });
+        await writeJsonFile(selectedSkillsPath, {
+          mode: args.skills_mode,
+          max_skills: args.max_skills,
+          requested: args.skills ?? [],
+          selected: selection.selected,
+          warnings: selection.warnings,
+          errors: selection.errors,
         });
 
         const finishedAt = new Date();
@@ -103,20 +131,29 @@ export async function startServer(): Promise<void> {
             run_id: runId,
             run_dir: runDir,
             subagent_thread_id: null,
-            selected_skills: [],
+            selected_skills: selection.selected,
             summary:
-              "Stub: created run directory and wrote request.json (delegation not implemented yet).",
+              "Stub: created run directory, indexed skills, and wrote request.json (delegation not implemented yet).",
             deliverables: [],
-            open_questions: [],
-            next_actions: ["Inspect run_dir artifacts", "Implement skill selection"],
-            artifacts: [{ name: "request.json", path: requestPath }],
+            open_questions: [...selection.warnings],
+            next_actions: [
+              "Inspect run_dir artifacts",
+              ...(selection.errors.length > 0
+                ? ["Fix skill selection errors (skills_mode/skills names) and retry"]
+                : ["Implement codex exec integration"]),
+            ],
+            artifacts: [
+              { name: "request.json", path: requestPath },
+              { name: "skills_index.json", path: skillsIndexPath },
+              { name: "selected_skills.json", path: selectedSkillsPath },
+            ],
             timing: {
               started_at: startedAt.toISOString(),
               finished_at: finishedAt.toISOString(),
               duration_ms: finishedAt.getTime() - startedAt.getTime(),
             },
-            status: "completed",
-            error: null,
+            status: selection.errors.length > 0 ? "failed" : "completed",
+            error: selection.errors.length > 0 ? selection.errors.join("; ") : null,
           },
         };
       } catch (err) {
@@ -165,10 +202,47 @@ export async function startServer(): Promise<void> {
       try {
         const { runId, runDir } = await createRunDir();
         const requestPath = path.join(runDir, "request.json");
+        const skillsIndexPath = path.join(runDir, "skills_index.json");
+        const selectedSkillsPath = path.join(runDir, "selected_skills.json");
+
         await writeJsonFile(requestPath, {
           tool: "delegate.resume",
           received_at: startedAt.toISOString(),
           request: args,
+        });
+
+        const skillsIndex = await discoverSkills({
+          cwd: args.cwd,
+          includeRepoSkills: args.include_repo_skills,
+          includeGlobalSkills: args.include_global_skills,
+        });
+        await writeJsonFile(skillsIndexPath, skillsIndex);
+
+        const selectionMode =
+          args.skills_mode === "auto" && !args.task ? "none" : args.skills_mode;
+
+        const selection = selectSkills({
+          mode: selectionMode,
+          skillsIndex: skillsIndex.skills,
+          task: args.task,
+          requested: args.skills,
+          maxSkills: args.max_skills,
+        });
+        const selectionWarnings =
+          args.skills_mode === "auto" && !args.task
+            ? [
+                "skills_mode=auto ignored because delegate.resume task is empty; selected_skills is empty.",
+                ...selection.warnings,
+              ]
+            : [...selection.warnings];
+
+        await writeJsonFile(selectedSkillsPath, {
+          mode: selectionMode,
+          max_skills: args.max_skills,
+          requested: args.skills ?? [],
+          selected: selection.selected,
+          warnings: selectionWarnings,
+          errors: selection.errors,
         });
 
         const finishedAt = new Date();
@@ -183,20 +257,29 @@ export async function startServer(): Promise<void> {
             run_id: runId,
             run_dir: runDir,
             subagent_thread_id: args.thread_id,
-            selected_skills: [],
+            selected_skills: selection.selected,
             summary:
-              "Stub: created run directory and wrote request.json (resume not implemented yet).",
+              "Stub: created run directory, indexed skills, and wrote request.json (resume not implemented yet).",
             deliverables: [],
-            open_questions: [],
-            next_actions: ["Inspect run_dir artifacts", "Implement resume via codex exec resume"],
-            artifacts: [{ name: "request.json", path: requestPath }],
+            open_questions: [...selectionWarnings],
+            next_actions: [
+              "Inspect run_dir artifacts",
+              ...(selection.errors.length > 0
+                ? ["Fix skill selection errors (skills_mode/skills names) and retry"]
+                : ["Implement resume via codex exec resume"]),
+            ],
+            artifacts: [
+              { name: "request.json", path: requestPath },
+              { name: "skills_index.json", path: skillsIndexPath },
+              { name: "selected_skills.json", path: selectedSkillsPath },
+            ],
             timing: {
               started_at: startedAt.toISOString(),
               finished_at: finishedAt.toISOString(),
               duration_ms: finishedAt.getTime() - startedAt.getTime(),
             },
-            status: "completed",
-            error: null,
+            status: selection.errors.length > 0 ? "failed" : "completed",
+            error: selection.errors.length > 0 ? selection.errors.join("; ") : null,
           },
         };
       } catch (err) {

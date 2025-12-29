@@ -35,7 +35,7 @@ How you can see it working (end state):
   - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/repo-scan.md`
 - [x] (2025-12-29 19:58) Milestone 1: MCP tool stubs + local client test (no `codex exec`).
 - [x] (2025-12-29 20:03) Docs sync: updated `README.md` to reflect `delegate.*` stubs and added `npm test` to Quickstart.
-- [ ] Milestone 2: Skill discovery + selection (+ persisted JSON artifacts).
+- [x] (2025-12-29 20:10) Milestone 2: Skill discovery + selection (+ persisted JSON artifacts).
 - [ ] Milestone 3: `codex exec` runner for `delegate.run` (events + last message + result summary).
 - [ ] Milestone 4: `delegate.resume`.
 - [ ] Milestone 5: Tests + docs + manual smoke tests in 2 repos.
@@ -62,6 +62,9 @@ How you can see it working (end state):
 
 - Observation: Node v24 can execute `.test.ts` under `node --test` without a loader, but we still run tests via `node --test --import tsx src/tests.ts` for Node 20+ compatibility.
   Evidence: `package.json` `test` script and `src/tests.ts`.
+
+- Observation: TypeScript types for `fs.promises` do not include `Dirent`; import `Dirent` from `node:fs` when using `readdir(..., { withFileTypes: true })` with `promises as fs`.
+  Evidence: `tsc` error `TS2694` while building `src/lib/skills/discover.ts`.
 
 ## Decision Log
 
@@ -103,6 +106,18 @@ How you can see it working (end state):
 
 - Decision: Align `Progress` milestone numbering with `Plan of Work` (fold “run directory + tool output schema plumbing” into Milestone 1).
   Rationale: Milestone numbering drifted; keeping one consistent set avoids confusion during execution and validation.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Skill indexing discovers all `**/SKILL.md` under both roots; if frontmatter is missing/invalid, fallback skill `name` is the parent folder name.
+  Rationale: Keeps discovery resilient across uneven skill docs while still producing stable names for selection.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Explicit skill selection is case-insensitive by `name`, and prefers `origin="repo"` when names collide between repo/global.
+  Rationale: Repo-local skills should override global defaults when the user requests a skill by name.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: For `delegate.resume`, if `skills_mode="auto"` but the follow-up `task` is empty, treat selection as `"none"` and continue (with a warning) rather than failing the tool.
+  Rationale: Resume calls can be valid even without new instructions; blocking on a missing task would be surprising.
   Date/Author: 2025-12-29 / agent
 
 ## Outcomes & Retrospective
