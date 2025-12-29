@@ -3,6 +3,7 @@ import type {
   AutopilotInput,
   AutopilotJob,
   AutopilotPlan,
+  ThinkingLevel,
 } from "./types.js";
 
 type RouteResult = {
@@ -54,6 +55,23 @@ function countClauses(task: string): number {
   return matches ? matches.length : 0;
 }
 
+function decideImplementThinkingLevel(task: string): ThinkingLevel {
+  const clauseCount = countClauses(task);
+  const { categories } = countWorkCategories(task);
+
+  if (
+    task.trim().length >= 400 ||
+    clauseCount >= 4 ||
+    categories.size >= 3 ||
+    categories.has("security") ||
+    categories.has("research")
+  ) {
+    return "high";
+  }
+
+  return "medium";
+}
+
 function buildJobs(input: AutopilotInput): AutopilotJob[] {
   const maxAgents = Math.max(1, input.max_agents);
   const jobs: AutopilotJob[] = [];
@@ -62,6 +80,7 @@ function buildJobs(input: AutopilotInput): AutopilotJob[] {
     jobs.push({
       id: "scan",
       title: "Repo scan + approach",
+      thinking_level: "low",
       role: "specialist",
       sandbox: "read-only",
       skills_mode: "auto",
@@ -80,6 +99,7 @@ function buildJobs(input: AutopilotInput): AutopilotJob[] {
   jobs.push({
     id: "implement",
     title: "Implement requested change",
+    thinking_level: decideImplementThinkingLevel(input.task),
     role: input.role,
     sandbox: input.sandbox,
     skills_mode: input.skills_mode,
@@ -95,6 +115,7 @@ function buildJobs(input: AutopilotInput): AutopilotJob[] {
     jobs.push({
       id: "verify",
       title: "Verify via tests/lint/build",
+      thinking_level: "low",
       role: "specialist",
       sandbox: "read-only",
       skills_mode: "none",
@@ -153,4 +174,3 @@ export function routeAutopilotTask(input: AutopilotInput): RouteResult {
     plan: { jobs: buildJobs(input) },
   };
 }
-

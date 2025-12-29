@@ -6,6 +6,9 @@ export type CodexSandboxMode = z.infer<typeof CodexSandboxModeSchema>;
 export const SkillsModeSchema = z.enum(["auto", "explicit", "none"]);
 export type SkillsMode = z.infer<typeof SkillsModeSchema>;
 
+export const ThinkingLevelSchema = z.enum(["low", "medium", "high"]);
+export type ThinkingLevel = z.infer<typeof ThinkingLevelSchema>;
+
 export const SelectedSkillSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
@@ -57,9 +60,12 @@ export const AutopilotJobSchema = z.object({
     .min(1)
     .regex(/^[A-Za-z0-9_-]+$/, "job id must be safe for paths"),
   title: z.string().min(1),
+  thinking_level: ThinkingLevelSchema,
   role: z.string().optional().default("specialist"),
   task: z.string().min(1),
   sandbox: CodexSandboxModeSchema,
+  model: z.string().optional(),
+  config_overrides: z.array(z.string()).optional(),
   skills_mode: SkillsModeSchema.optional().default("auto"),
   skills: z.array(z.string()).optional(),
   max_skills: z.number().int().positive().optional().default(6),
@@ -121,4 +127,3 @@ export const AutopilotToolOutputSchema = z.object({
 });
 
 export type AutopilotToolOutput = z.infer<typeof AutopilotToolOutputSchema>;
-

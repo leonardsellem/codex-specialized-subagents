@@ -41,4 +41,8 @@ test("routeAutopilotTask delegates for cross-cutting implementation requests", (
 
   const ids = routed.plan.jobs.map((j) => j.id);
   assert.deepEqual(ids, ["scan", "implement", "verify"]);
+
+  assert.equal(routed.plan.jobs[0]?.thinking_level, "low");
+  assert.equal(routed.plan.jobs[1]?.thinking_level, "high");
+  assert.equal(routed.plan.jobs[2]?.thinking_level, "low");
 });
