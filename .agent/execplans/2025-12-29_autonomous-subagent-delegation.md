@@ -32,6 +32,7 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 - [x] (2025-12-29 21:08 CET) Task 1: Add autopilot schemas + tests. (`0a23795`)
 - [x] (2025-12-29 21:11 CET) Task 2: Add `routeAutopilotTask(...)` heuristics + tests. (`d0cd66f`)
 - [x] (2025-12-29 21:13 CET) Task 3: Add concurrency-limited `runJobs(...)` helper + tests. (`d205d4e`)
+- [x] (2025-12-29 21:17 CET) Task 4: Implement + register `delegate.autopilot` tool + unit tests. (`7d4138c`)
 
 ## Surprises & Discoveries
 
