@@ -2,7 +2,7 @@
 
 MCP server that lets Codex delegate to isolated codex exec sub-agents, selecting repo+global skills automatically.
 
-Status: `delegate.run` + `delegate.resume` are wired to `codex exec` / `codex exec resume` (artifact-first). See `.agent/execplans/2025-12-29_codex-specialized-subagents-mcp-server.md`.
+Status: `delegate.run` + `delegate.resume` are wired to `codex exec` / `codex exec resume` (artifact-first). See `.agent/execplans/archive/2025-12-29_codex-specialized-subagents-mcp-server.md` for the shipped v1 ExecPlan.
 
 ## Quickstart
 
