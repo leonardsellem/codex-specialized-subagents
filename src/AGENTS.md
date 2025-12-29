@@ -23,10 +23,11 @@ Scope: the TypeScript MCP server implementation (`src/**`).
 - `src/cli.ts` → CLI entrypoint for stdio server
 - `src/server.ts` → MCP server + tool handlers
 - `src/lib/codex/*` → `codex exec` spawn + output schema
+- `src/lib/delegation/*` → autopilot routing + orchestration (`delegate.autopilot`)
 - `src/lib/skills/*` → skill discovery + selection
 
 ## JIT search
 - Tools: `rg -n \"registerTool\\(\\\"delegate\" src/server.ts`
+- Autopilot: `rg -n \"delegate\\.autopilot|runAutopilot|routeAutopilotTask\" src -S`
 - Codex runner: `rg -n \"runCodexExec|runCodexExecResume\" src/lib/codex -S`
 - Skill selection: `rg -n \"discoverSkills|selectSkills\" src/lib/skills -S`
-

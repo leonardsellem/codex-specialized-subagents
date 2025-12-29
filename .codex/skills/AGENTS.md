@@ -8,6 +8,7 @@ Scope: repo-local Codex skills (`.codex/skills/**`).
 - `SKILL.md` should start with YAML frontmatter (minimum):
   - `name: <skill-name>`
   - `description: <what triggers this skill>`
+  - Optional: `delegator_exclude: true` (marks the skill as parent-only; this server will not index it for delegated subagents)
 
 ## How skills are used by this repo
 - Discovery: the server indexes all `**/SKILL.md` under the nearest ancestor `.codex/skills`.
@@ -23,4 +24,3 @@ Scope: repo-local Codex skills (`.codex/skills/**`).
 ## JIT search
 - List all repo skills: `find .codex/skills -name SKILL.md -print`
 - Find skill frontmatter: `rg -n \"^name:|^description:\" .codex/skills -S`
-
