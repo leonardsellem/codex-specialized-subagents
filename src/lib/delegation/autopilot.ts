@@ -162,6 +162,7 @@ function makeSkippedJobResult(job: AutopilotJob, runDir: string): AutopilotJobRe
 async function runAutopilotJob(options: {
   parentRunDir: string;
   cwd: string;
+  env: NodeJS.ProcessEnv;
   skillsIndex: SkillIndex;
   job: AutopilotJob;
   abortSignal?: AbortSignal;
@@ -239,6 +240,8 @@ async function runAutopilotJob(options: {
     skipGitRepoCheck: options.job.skip_git_repo_check,
     prompt: subagentPrompt,
     abortSignal: options.abortSignal,
+    env: options.env,
+    configOverrides: options.job.config_overrides,
   });
 
   const finishedAt = new Date();
@@ -290,6 +293,7 @@ async function runAutopilotJob(options: {
 
 export async function runAutopilot(args: unknown, options: RunAutopilotOptions = {}): Promise<AutopilotToolOutput> {
   const startedAt = new Date();
+  const env = options.env ?? process.env;
 
   const deps: AutopilotDeps = {
     createRunDir,
@@ -304,7 +308,7 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
   const parsed = AutopilotInputSchema.parse(args);
   const cwd = parsed.cwd?.trim() ? parsed.cwd.trim() : process.cwd();
 
-  const { runId, runDir } = await deps.createRunDir({ env: options.env });
+  const { runId, runDir } = await deps.createRunDir({ env });
 
   const requestPath = path.join(runDir, "request.json");
   const skillsIndexPath = path.join(runDir, "skills_index.json");
@@ -322,20 +326,36 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
     cwd,
     includeRepoSkills: parsed.include_repo_skills,
     includeGlobalSkills: parsed.include_global_skills,
-    env: options.env,
+    env,
   });
   await deps.writeJsonFile(skillsIndexPath, skillsIndex);
 
   const routed = routeAutopilotTask({ ...parsed, cwd });
+
+  const plan = {
+    jobs: routed.plan.jobs.map((job) => {
+      const key =
+        job.thinking_level === "low"
+          ? "CODEX_AUTOPILOT_MODEL_LOW"
+          : job.thinking_level === "medium"
+            ? "CODEX_AUTOPILOT_MODEL_MEDIUM"
+            : "CODEX_AUTOPILOT_MODEL_HIGH";
+
+      const model = env[key]?.trim() ? env[key]!.trim() : undefined;
+      const config_overrides = model ? [`model=${model}`] : undefined;
+      return { ...job, ...(model ? { model, config_overrides } : {}) };
+    }),
+  };
+
   await deps.writeJsonFile(decisionPath, routed.decision);
-  await deps.writeJsonFile(planPath, routed.plan);
+  await deps.writeJsonFile(planPath, plan);
 
   const jobsById = new Map<string, AutopilotJobResult>();
 
   if (routed.decision.should_delegate) {
-    const preJobs = routed.plan.jobs.filter((j) => j.id === "scan");
-    const workJobs = routed.plan.jobs.filter((j) => j.id === "implement");
-    const postJobs = routed.plan.jobs.filter((j) => j.id === "verify");
+    const preJobs = plan.jobs.filter((j) => j.id === "scan");
+    const workJobs = plan.jobs.filter((j) => j.id === "implement");
+    const postJobs = plan.jobs.filter((j) => j.id === "verify");
 
     const runPhase = async (phaseJobs: AutopilotJob[], maxParallel: number): Promise<void> => {
       const phaseResult = await runJobs(phaseJobs, {
@@ -349,6 +369,7 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
               skillsIndex,
               job,
               abortSignal: options.signal,
+              env,
               deps,
             });
           } catch (err) {
@@ -414,7 +435,7 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
     await runPhase(postJobs, parsed.max_parallel);
   }
 
-  const orderedJobResults = routed.plan.jobs.map(
+  const orderedJobResults = plan.jobs.map(
     (job) => jobsById.get(job.id) ?? makeSkippedJobResult(job, path.join(runDir, "subruns", job.id)),
   );
 
@@ -446,7 +467,7 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
     run_id: runId,
     run_dir: runDir,
     decision: routed.decision,
-    plan: routed.plan,
+    plan,
     jobs: orderedJobResults,
     aggregate,
     artifacts: [

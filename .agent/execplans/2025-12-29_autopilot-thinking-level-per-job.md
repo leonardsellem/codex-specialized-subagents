@@ -29,8 +29,8 @@ After this change:
 - [x] (2025-12-29 23:30) Confirm the exact `codex` CLI flags we will rely on (`--config/-c`, `--model/-m`) and how they behave in our local setup. (see **Artifacts and Notes**)
 - [x] (2025-12-29 23:39) Add `thinking_level` + (optional) per-job Codex override fields to autopilot job schema (`src/lib/delegation/types.ts`).
 - [x] (2025-12-29 23:39) Assign deterministic `thinking_level` in `routeAutopilotTask` for each job (`src/lib/delegation/route.ts`) and cover it with unit tests.
-- [ ] (2025-12-29 23:23) Resolve per-job model/config overrides from env in `runAutopilot`, persist the enriched plan, and pass overrides into `runCodexExec` (`src/lib/delegation/autopilot.ts`).
-- [ ] (2025-12-29 23:23) Add unit tests (TDD) for env mapping + `runCodexExec({ configOverrides })` wiring.
+- [x] (2025-12-29 23:43) Resolve per-job model/config overrides from env in `runAutopilot`, persist the enriched plan, and pass overrides into `runCodexExec` (`src/lib/delegation/autopilot.ts`).
+- [x] (2025-12-29 23:43) Add unit tests (TDD) for env mapping + `runCodexExec({ configOverrides })` wiring.
 - [ ] (2025-12-29 23:23) Update docs (`docs/reference/tools.md`, `docs/usage.md`, `README.md`) and verify `npm test`, `npm run lint`, `npm run build` (optionally `RUN_CODEX_INTEGRATION_TESTS=1 npm test`).
 
 ## Surprises & Discoveries
@@ -383,7 +383,7 @@ Local CLI evidence (2025-12-29):
   - `--env <KEY=VALUE>` (for stdio servers)
 
 Local test evidence (2025-12-29):
-- `npm test`: 17 pass, 1 skipped
+- `npm test`: 18 pass, 1 skipped
 
 ## Interfaces and Dependencies
 
