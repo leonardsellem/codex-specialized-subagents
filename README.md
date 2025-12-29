@@ -81,6 +81,8 @@ Then try prompts like:
 - “Refactor the MCP server and update tests + README.”
 - “Audit the repo docs and propose improvements.”
 
+Optional: `delegate_autopilot` assigns each job a `thinking_level` (`low | medium | high`). You can set `CODEX_AUTOPILOT_MODEL_LOW|MEDIUM|HIGH` on the MCP server process to override the Codex model per job (see `docs/usage.md`).
+
 ### Manual tool calls
 
 If you prefer explicit tool usage, tell Codex to call one of:

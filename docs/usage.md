@@ -82,6 +82,34 @@ Delegated sub-agents can load skills from:
 
 In `skills_mode=auto`, the server selects up to `max_skills` skills based on the task text. Use `skills_mode=explicit` to request specific skills by name, or `skills_mode=none` to disable skills entirely.
 
+## Per-job model selection (autopilot)
+
+`delegate_autopilot` assigns each planned job a `thinking_level` (`low | medium | high`). If you set any of the env vars below, the server resolves `thinking_level` into a per-job model override and passes it into each `codex exec` sub-run via `--config/-c model=<MODEL_ID>`.
+
+Environment variables (server process):
+- `CODEX_AUTOPILOT_MODEL_LOW`
+- `CODEX_AUTOPILOT_MODEL_MEDIUM`
+- `CODEX_AUTOPILOT_MODEL_HIGH`
+
+If an env var is unset/empty, the server does not override the model for that thinking level.
+
+### Example: set env vars when registering the MCP server
+
+```bash
+codex mcp add codex-specialized-subagents \
+  --env CODEX_AUTOPILOT_MODEL_LOW=<MODEL_ID> \
+  --env CODEX_AUTOPILOT_MODEL_HIGH=<MODEL_ID> \
+  -- node "$(pwd)/dist/cli.js"
+```
+
+### Example: set env vars for local dev
+
+```bash
+export CODEX_AUTOPILOT_MODEL_LOW=<MODEL_ID>
+export CODEX_AUTOPILOT_MODEL_HIGH=<MODEL_ID>
+npm run dev
+```
+
 ## Where results and logs go
 
 Every tool call returns a `run_dir` and writes artifacts under:
@@ -91,4 +119,3 @@ ${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/
 ```
 
 See `reference/run-directories.md` for the full layout and debugging tips.
-

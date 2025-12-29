@@ -76,9 +76,8 @@ Decide whether delegation is worthwhile, and if so orchestrate one or more speci
 
 - `run_id`, `run_dir`
 - `decision`: `{ should_delegate: boolean, reason: string }`
-- `plan`: `{ jobs: { id, title, role?, task, sandbox, skills_mode?, ... }[] }`
+- `plan`: `{ jobs: { id, title, thinking_level, role?, task, sandbox, model?, config_overrides?, skills_mode?, ... }[] }`
 - `jobs`: per-job results, each with `run_dir` + `subagent_thread_id` and the same summary/deliverables/open_questions/next_actions pattern
 - `aggregate`: consolidated `{ summary, deliverables, open_questions, next_actions }`
 - `artifacts`: includes `autopilot_*.json` plus `subruns/`
 - `timing`, `status`, `error`
-

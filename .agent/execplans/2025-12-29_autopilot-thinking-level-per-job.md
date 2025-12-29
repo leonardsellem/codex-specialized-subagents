@@ -31,7 +31,9 @@ After this change:
 - [x] (2025-12-29 23:39) Assign deterministic `thinking_level` in `routeAutopilotTask` for each job (`src/lib/delegation/route.ts`) and cover it with unit tests.
 - [x] (2025-12-29 23:43) Resolve per-job model/config overrides from env in `runAutopilot`, persist the enriched plan, and pass overrides into `runCodexExec` (`src/lib/delegation/autopilot.ts`).
 - [x] (2025-12-29 23:43) Add unit tests (TDD) for env mapping + `runCodexExec({ configOverrides })` wiring.
-- [ ] (2025-12-29 23:23) Update docs (`docs/reference/tools.md`, `docs/usage.md`, `README.md`) and verify `npm test`, `npm run lint`, `npm run build` (optionally `RUN_CODEX_INTEGRATION_TESTS=1 npm test`).
+- [x] (2025-12-29 23:44) Update docs (`docs/reference/tools.md`, `docs/usage.md`, `README.md`).
+- [x] (2025-12-29 23:44) Verify `npm test` (see **Artifacts and Notes**).
+- [ ] (2025-12-29 23:44) Verify `npm run lint`, `npm run build` (optionally `RUN_CODEX_INTEGRATION_TESTS=1 npm test`).
 
 ## Surprises & Discoveries
 
