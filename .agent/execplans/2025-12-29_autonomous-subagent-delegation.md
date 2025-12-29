@@ -25,6 +25,8 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 1) exposing a single “do the right thing” tool (`delegate.autopilot`) with minimal required args + strong defaults, and
 2) providing a global Codex skill that teaches the parent agent to use it only when beneficial.
 
+**Note (2025-12-29):** Codex/OpenAI tool naming restrictions require `^[a-zA-Z0-9_-]+$`, so the shipped tool names are `delegate_run`, `delegate_resume`, `delegate_autopilot`. Older sections below may still reference the pre-rename `delegate.*` names.
+
 ## Progress
 
 - [x] (2025-12-29 21:05 CET) Land plan in-repo (baseline for implementation). (`47dc4ff`)
