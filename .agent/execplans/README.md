@@ -16,5 +16,5 @@ When a plan is complete:
 - Move its artifacts folder to `.agent/execplans/archive/artifacts/`
 
 Helpers:
-- `python scripts/new_execplan.py "short description"`
-- `python scripts/archive_execplan.py .agent/execplans/YYYY-MM-DD_slug.md`
+- `python3 scripts/new_execplan.py "short description"`
+- `python3 scripts/archive_execplan.py .agent/execplans/YYYY-MM-DD_slug.md`

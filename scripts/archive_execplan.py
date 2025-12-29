@@ -3,7 +3,7 @@
 Archive an ExecPlan and its artifacts folder.
 
 Usage:
-  python scripts/archive_execplan.py .agent/execplans/YYYY-MM-DD_slug.md
+  python3 scripts/archive_execplan.py .agent/execplans/YYYY-MM-DD_slug.md
 """
 
 from __future__ import annotations

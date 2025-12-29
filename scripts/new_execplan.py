@@ -3,7 +3,7 @@
 Create a new ExecPlan file + artifacts folder.
 
 Usage:
-  python scripts/new_execplan.py "short description"
+  python3 scripts/new_execplan.py "short description"
 """
 
 from __future__ import annotations

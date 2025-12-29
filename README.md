@@ -1,36 +1,51 @@
 # codex-specialized-subagents
 
-MCP server that lets Codex delegate to isolated codex exec sub-agents, selecting repo+global skills automatically.
+Artifact-first sub-agent delegation for Codex CLI (MCP server).
 
-Status: `delegate_run`, `delegate_resume`, and `delegate_autopilot` are wired to `codex exec` / `codex exec resume` (artifact-first). See `.agent/execplans/archive/2025-12-29_codex-specialized-subagents-mcp-server.md` for the shipped v1 ExecPlan.
+This repo provides a local (stdio) MCP server that exposes:
+- `delegate_autopilot` — decide whether to delegate and, if yes, orchestrate one or more `codex exec` sub-agent runs
+- `delegate_run` — run a single specialist sub-agent via `codex exec`
+- `delegate_resume` — resume a prior sub-agent thread via `codex exec resume`
 
-## Quickstart
+Each tool call writes a run directory under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/` containing the prompt, selected skills, event stream, and structured results (artifact-first debugging).
 
-1) Install dependencies:
+## When to use
+
+- You want parallelism and specialization for multi-step / cross-cutting work.
+- You want durable artifacts (logs + outputs) to debug and review what happened.
+
+## Requirements
+
+- Node.js `>=20` (see `package.json#engines`)
+- `npm`
+- `codex` CLI on your PATH and authenticated (required for real delegation runs)
+
+Optional:
+- Python 3 (only for helper scripts under `.agent/`)
+
+## Install & quickstart (from source)
+
+From the repo root:
 
 ```bash
 npm install
-```
-
-2) Build:
-
-```bash
 npm run build
 ```
 
-3) Run tests:
+### Increase MCP tool timeout (recommended)
 
-```bash
-npm test
+Delegated runs can take minutes. Configure a longer tool timeout for this server in `${CODEX_HOME:-~/.codex}/config.toml`:
+
+```toml
+[mcp_servers.codex-specialized-subagents]
+tool_timeout_sec = 600
 ```
 
-4) (Optional) Run the MCP server locally (stdio):
+If you see `timed out awaiting tools/call after 60s`, increase `tool_timeout_sec`.
 
-```bash
-npm run dev
-```
+### Register with Codex
 
-5) Register with Codex (global):
+From the repo root:
 
 ```bash
 codex mcp add codex-specialized-subagents -- node "$(pwd)/dist/cli.js"
@@ -42,151 +57,80 @@ Verify:
 codex mcp get codex-specialized-subagents
 ```
 
-## Workflow
+Remove:
 
-- **Agent instructions:** see `AGENTS.md`
-- **Planning for big work:** see `.agent/PLANS.md` and store ExecPlans in `.agent/execplans/`
-- **Debug journal:** `.agent/DEBUG.md` (local-only by default)
-- **Repo skills:** `.codex/skills/`
+```bash
+codex mcp remove codex-specialized-subagents
+```
 
-## What this will provide (v1)
+## Usage
 
-- MCP tools:
-  - `delegate_run` — run a specialist sub-agent via `codex exec`
-  - `delegate_resume` — resume a prior sub-agent thread via `codex exec resume`
-  - `delegate_autopilot` — decide whether to delegate and, if yes, orchestrate one or more sub-agent runs
-- Skill selection:
-  - repo-local `.codex/skills` (nearest ancestor of the delegated `cwd`)
-  - global `${CODEX_HOME:-~/.codex}/skills`
-- Artifact-first:
-  - full sub-agent event stream + outputs saved to a run directory
-  - MCP tool returns only a small structured summary + artifact paths
+### Interactive autopilot (recommended)
 
-## What works today
+In Codex interactive mode, `delegate_autopilot` can split a request into jobs (scan / implement / verify) and run specialist sub-agents.
 
-- `delegate_run` runs a Codex sub-agent via `codex exec` and writes artifacts including `request.json`, `skills_index.json`, `selected_skills.json`, `subagent_prompt.txt`, `events.jsonl`, `stderr.log`, `last_message.json`, `result.json`.
-- `delegate_resume` resumes an existing `thread_id` via `codex exec resume` and writes a new run directory with similar artifacts.
-- `delegate_autopilot` creates a parent run directory, writes `autopilot_*.json` artifacts, and (when delegation is chosen) runs sub-agents under `subruns/<job_id>/`.
-- Run directories are created under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`.
-
-## MCP tools (v1)
-
-### `delegate_run`
-
-Input:
-- `task`: string (required)
-- `cwd`: string (required; absolute path recommended)
-- `role`: string (optional; default `"specialist"`)
-- `skills_mode`: `"auto" | "explicit" | "none"` (default `"auto"`)
-- `skills`: string[] (explicit mode only)
-- `max_skills`: number (auto mode; default `6`)
-- `include_repo_skills`: boolean (default `true`)
-- `include_global_skills`: boolean (default `true`)
-- `sandbox`: `"read-only" | "workspace-write" | "danger-full-access"` (default `"read-only"`)
-- `skip_git_repo_check`: boolean (default `false`)
-
-Output (structured):
-- `run_id`, `run_dir`, `subagent_thread_id`
-- `selected_skills`: `{ name, description?, origin, path }[]`
-- `summary`, `deliverables`, `open_questions`, `next_actions`
-- `artifacts`: `{ name, path }[]`
-- `timing`: `{ started_at, finished_at, duration_ms }`
-- `status`: `"completed" | "failed" | "cancelled"`, `error`
-
-### `delegate_resume`
-
-Input: same as `delegate_run`, plus:
-- `thread_id`: string (required)
-- `task`: string (optional follow-up prompt)
-
-Output: same shape as `delegate_run`.
-
-### `delegate_autopilot`
-
-Input:
-- `task`: string (required)
-- `cwd`: string (optional; defaults to the server process working directory)
-- `sandbox`: `"read-only" | "workspace-write" | "danger-full-access"` (default `"workspace-write"`)
-- `skills_mode`: `"auto" | "explicit" | "none"` (default `"auto"`)
-- `skills`: string[] (explicit mode only)
-- `max_skills`: number (auto mode; default `6`)
-- `include_repo_skills`: boolean (default `true`)
-- `include_global_skills`: boolean (default `true`)
-- `skip_git_repo_check`: boolean (default `false`)
-- `max_agents`: number (default `3`)
-- `max_parallel`: number (default `2`)
-
-Output (structured):
-- `run_id`, `run_dir`
-- `decision`: `{ should_delegate: boolean, reason: string }`
-- `plan`: `{ jobs: { id, title, role, task, sandbox, skills_mode, ... }[] }`
-- `jobs`: per-job results including `run_dir` + `subagent_thread_id`
-- `aggregate`: consolidated `{ summary, deliverables, open_questions, next_actions }`
-- `artifacts`: includes `autopilot_*.json` plus `subruns/`
-- `timing`, `status`, `error`
-
-## Run directory layout
-
-Each tool call creates a new directory under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/` containing:
-- `request.json`
-- `skills_index.json`
-- `selected_skills.json` (only for `delegate_run` / `delegate_resume`)
-- `subagent_prompt.txt` (only for `delegate_run` / `delegate_resume`)
-- `subagent_output.schema.json` (only for `delegate_run` / `delegate_resume`)
-- `events.jsonl` (only for `delegate_run` / `delegate_resume`)
-- `stderr.log` (only for `delegate_run` / `delegate_resume`)
-- `last_message.json` (only for `delegate_run` / `delegate_resume`)
-- `result.json` (only for `delegate_run` / `delegate_resume`)
-- `thread.json` (best-effort; present when the session/thread id is detected)
-
-For `delegate_autopilot` runs, the parent run directory also contains:
-- `autopilot_decision.json`
-- `autopilot_plan.json`
-- `autopilot_aggregate.json`
-- `subruns/<job_id>/...` (each subrun contains its own `request.json`, `selected_skills.json`, `subagent_prompt.txt`, and Codex artifacts)
-
-## “Natural” interactive delegation (global skill install)
-
-This repo can’t force Codex to call tools. To make delegation feel “natural” in interactive mode, install the `delegation-autopilot` skill globally and let Codex decide when to call `delegate_autopilot`.
-
-1) Copy the skill to your global Codex skills directory:
+To make delegation feel automatic in interactive mode, install the included `delegation-autopilot` skill globally:
 
 ```bash
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills/delegation-autopilot"
-cp .codex/skills/delegation-autopilot/SKILL.md "${CODEX_HOME:-$HOME/.codex}/skills/delegation-autopilot/SKILL.md"
+cp .codex/skills/delegation-autopilot/SKILL.md \
+  "${CODEX_HOME:-$HOME/.codex}/skills/delegation-autopilot/SKILL.md"
 ```
 
-2) In Codex interactive, try:
+Then try prompts like:
+- “Refactor the MCP server and update tests + README.”
+- “Audit the repo docs and propose improvements.”
 
-- Should delegate: “Refactor the MCP server and update tests + README.”
-- Should not delegate: “What does the `delegate_run` tool do?”
+### Manual tool calls
 
-## Codex MCP config (timeouts)
+If you prefer explicit tool usage, tell Codex to call one of:
+- `delegate_autopilot` (multi-agent orchestration)
+- `delegate_run` (single sub-agent run)
+- `delegate_resume` (resume a prior sub-agent thread)
 
-Delegated runs can take minutes; increase the MCP client tool timeout for this server in `${CODEX_HOME:-~/.codex}/config.toml`:
+## Skills
 
-```toml
-[mcp_servers.codex-specialized-subagents]
-tool_timeout_sec = 600
+Sub-agent runs can load Codex skills from:
+- repo-local `.codex/skills` (nearest ancestor of the delegated `cwd`)
+- global `${CODEX_HOME:-~/.codex}/skills`
+
+Note: this repo’s `delegation-autopilot` skill is marked `delegator_exclude: true` (parent-only) to prevent delegation recursion.
+
+## Artifacts (run directories)
+
+Each tool call writes a run directory under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`.
+
+## Documentation
+
+- `docs/README.md` — documentation index
+- `docs/usage.md` — how to use the tools effectively
+- `docs/troubleshooting.md` — common failure modes (timeouts, missing `codex`, etc.)
+- `docs/development.md` — local development and test matrix
+- `docs/reference/tools.md` — full tool schemas (inputs/outputs)
+- `docs/reference/run-directories.md` — run directory layout and artifact meaning
+
+## Development
+
+```bash
+npm test
+npm run lint
+npm run dev
 ```
 
-## Tests
+Integration tests (requires Codex CLI + auth):
 
-- Default: `npm test` (skips real Codex integration).
-- Integration (requires `codex` CLI + auth): `RUN_CODEX_INTEGRATION_TESTS=1 npm test`.
+```bash
+RUN_CODEX_INTEGRATION_TESTS=1 npm test
+```
 
-## Project structure
+Contributing: `CONTRIBUTING.md`.
 
-- `.agent/` — planning + debugging scaffolding
-- `.codex/skills/` — repo-scoped Codex skills
-- `.githooks/` — versioned git hooks (optional)
-- `scripts/` — helper scripts (ExecPlans + git hooks)
-- As the repo grows, add `README.md` files at major directory boundaries (more comprehensive than `AGENTS.md`).
+## Security
 
-## Notes
+- Don’t commit secrets (`.env` is gitignored; use `.env.example` as a template).
+- Run directories can contain sensitive prompts/output; treat `${CODEX_HOME:-~/.codex}/delegator/runs` as sensitive.
 
-- `.env` is gitignored. Put secrets there, not in code.
-- The optional AI commit-message hook is **opt-in** (see `scripts/install-git-hooks.sh`).
+Reporting: `SECURITY.md`.
 
 ## License
 

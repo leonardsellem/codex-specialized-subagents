@@ -34,6 +34,7 @@ Keep it short. Use **hierarchical, nearest-wins** `AGENTS.md` files:
 ## JIT directory map (nearest-wins)
 - `.agent/` → `.agent/AGENTS.md` (ExecPlans + artifacts workflow)
 - `.codex/skills/` → `.codex/skills/AGENTS.md` (repo-local skill authoring)
+- `docs/` → (human-facing docs; user + contributor guides)
 - `src/` → `src/AGENTS.md` (MCP server + tool implementations)
 - `scripts/` → `scripts/AGENTS.md` (helper scripts)
 - `.githooks/` → `.githooks/AGENTS.md` (optional git hooks)
@@ -42,7 +43,7 @@ As the repo grows:
 - `apps/<name>/` → `apps/<name>/AGENTS.md`
 - `packages/<name>/` → `packages/<name>/AGENTS.md`
 - `services/<name>/` → `services/<name>/AGENTS.md`
-- `docs/` → `docs/AGENTS.md` (only if needed)
+- Add `docs/AGENTS.md` only if docs need scope-specific agent rules.
 
 ## Planning (ExecPlans)
 - Rules live in: `.agent/PLANS.md`
