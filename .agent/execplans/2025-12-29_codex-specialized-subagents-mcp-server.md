@@ -33,12 +33,11 @@ How you can see it working (end state):
 - [x] (2025-12-29 19:39) Re-grounded this ExecPlan via Context7 + web research + repo scan; wrote artifacts:
   - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/external-research.md`
   - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/repo-scan.md`
-- [ ] Milestone 1: MCP tool stubs + local client test (no `codex exec`).
-- [ ] Milestone 2: Run directory + tool output schema plumbing.
-- [ ] Milestone 3: Skill discovery + selection (+ persisted JSON artifacts).
-- [ ] Milestone 4: `codex exec` runner for `delegate.run` (events + last message + result summary).
-- [ ] Milestone 5: `delegate.resume`.
-- [ ] Milestone 6: Tests + docs + manual smoke tests in 2 repos.
+- [x] (2025-12-29 19:58) Milestone 1: MCP tool stubs + local client test (no `codex exec`).
+- [ ] Milestone 2: Skill discovery + selection (+ persisted JSON artifacts).
+- [ ] Milestone 3: `codex exec` runner for `delegate.run` (events + last message + result summary).
+- [ ] Milestone 4: `delegate.resume`.
+- [ ] Milestone 5: Tests + docs + manual smoke tests in 2 repos.
 
 ## Surprises & Discoveries
 
@@ -56,6 +55,12 @@ How you can see it working (end state):
 
 - Observation: No separate “parent macro ExecPlan” exists in this repo; the closest macro scope is the root `README.md` section “What this will provide (v1)”.
   Evidence: `ls .agent/execplans` and `README.md`.
+
+- Observation: MCP `Client.callTool()` validates `structuredContent` against the server-advertised tool output schema and throws if `structuredContent` is missing (unless `isError` is set).
+  Evidence: `node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js` (`callTool(...)`).
+
+- Observation: Node v24 can execute `.test.ts` under `node --test` without a loader, but we still run tests via `node --test --import tsx src/tests.ts` for Node 20+ compatibility.
+  Evidence: `package.json` `test` script and `src/tests.ts`.
 
 ## Decision Log
 
@@ -89,6 +94,14 @@ How you can see it working (end state):
 
 - Decision: Once tests are added, update `npm test` to run TypeScript tests directly (e.g., `node --test --import tsx`), rather than requiring a build step.
   Rationale: Repo is TS-only; current `node --test` will not execute `.ts` tests without a loader/import.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Add `src/tests.ts` as a single test entrypoint that imports `src/**/*.test.ts`, and run it via `node --test --import tsx src/tests.ts`.
+  Rationale: Keeps `npm test` cross-platform and Node 20-compatible without relying on shell glob expansion or Node’s test file discovery rules.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Align `Progress` milestone numbering with `Plan of Work` (fold “run directory + tool output schema plumbing” into Milestone 1).
+  Rationale: Milestone numbering drifted; keeping one consistent set avoids confusion during execution and validation.
   Date/Author: 2025-12-29 / agent
 
 ## Outcomes & Retrospective
