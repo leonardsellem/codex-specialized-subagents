@@ -35,6 +35,7 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 - [x] (2025-12-29 21:17 CET) Task 4: Implement + register `delegate.autopilot` tool + unit tests. (`7d4138c`)
 - [x] (2025-12-29 21:20 CET) Task 5a: Support `delegator_exclude: true` skill frontmatter (exclude from delegation index). (`6250477`)
 - [x] (2025-12-29 21:22 CET) Task 5b: Add repo-local `delegation-autopilot` skill (template for global install). (`9611210`)
+- [x] (2025-12-29 21:24 CET) Task 5c: Update docs (`README.md`, `AGENTS.md`) for `delegate.autopilot` + global skill install. (`553e8cd`)
 
 ## Surprises & Discoveries
 
