@@ -31,6 +31,7 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 - [ ] (2025-12-29 21:05 CET) Implement `delegate.autopilot` and global skill-driven calling behavior.
 - [x] (2025-12-29 21:08 CET) Task 1: Add autopilot schemas + tests. (`0a23795`)
 - [x] (2025-12-29 21:11 CET) Task 2: Add `routeAutopilotTask(...)` heuristics + tests. (`d0cd66f`)
+- [x] (2025-12-29 21:13 CET) Task 3: Add concurrency-limited `runJobs(...)` helper + tests. (`d205d4e`)
 
 ## Surprises & Discoveries
 
