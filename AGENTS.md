@@ -15,7 +15,9 @@ Keep it short. Use **hierarchical, nearest-wins** `AGENTS.md` files:
 ## Root commands (verify these are real)
 - Install: `npm install`
 - Dev: `npm run dev`
+- Build: `npm run build`
 - Test: `npm test`
+- Integration test (requires `codex` CLI + auth): `RUN_CODEX_INTEGRATION_TESTS=1 npm test`
 - Lint/typecheck: `npm run lint`
 
 ## Universal conventions
@@ -27,8 +29,16 @@ Keep it short. Use **hierarchical, nearest-wins** `AGENTS.md` files:
 ## Security & secrets
 - Never commit secrets/tokens/keys.
 - Put secrets in `.env`/secret manager; `.env` is gitignored.
+- Avoid pasting secrets from `${CODEX_HOME:-~/.codex}` (it may contain auth/config).
 
-## JIT directory map (add as the repo grows)
+## JIT directory map (nearest-wins)
+- `.agent/` → `.agent/AGENTS.md` (ExecPlans + artifacts workflow)
+- `.codex/skills/` → `.codex/skills/AGENTS.md` (repo-local skill authoring)
+- `src/` → `src/AGENTS.md` (MCP server + tool implementations)
+- `scripts/` → `scripts/AGENTS.md` (helper scripts)
+- `.githooks/` → `.githooks/AGENTS.md` (optional git hooks)
+
+As the repo grows:
 - `apps/<name>/` → `apps/<name>/AGENTS.md`
 - `packages/<name>/` → `packages/<name>/AGENTS.md`
 - `services/<name>/` → `services/<name>/AGENTS.md`
@@ -40,13 +50,15 @@ Keep it short. Use **hierarchical, nearest-wins** `AGENTS.md` files:
 - Archive completed plans in: `.agent/execplans/archive/`
 - Debug journal: `.agent/DEBUG.md` (local-only by default)
 
-## Global Codex skills (available in `~/.codex/skills`)
-- Planning: `brainstorming`, `writing-plans`, `ground-execplan`, `executing-plans`
-- Shipping: `commit-work`, `create-pr`, `requesting-code-review`, `verification-before-completion`, `finishing-a-development-branch`
-- Debugging: `systematic-debugging`, `bug-triage`, `root-cause-tracing`, `test-driven-development`
-- MCP: `mcp-builder`
-- Docs/hygiene: `lp-repo-docs-update`, `coding-guidelines-verify`
-- Docs/files: `docx`, `pptx`, `xlsx`, `pdf`
+## Preferred Codex skills (keep this list small)
+- `agents-md` (keep hierarchical `AGENTS.md` repo-true)
+- `lp-repo-docs-update` (docs sync grounded in git diffs)
+- `executing-plans` (implement ExecPlans in batches)
+- `verification-before-completion` (run checks before claiming done)
+- `bug-triage` (fast repro → fix → report)
+- `coding-guidelines-verify` (enforce local conventions + checks)
+- `mcp-builder` (MCP tool design/interop best practices)
+- `commit-work` (clean, reviewable commits)
 
 Default: list only the 4–10 skills you expect to use on this repo (don’t dump the entire global catalog).
 
