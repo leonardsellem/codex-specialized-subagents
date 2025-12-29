@@ -64,8 +64,8 @@ codex mcp list
 ## What works today (stubbed)
 
 - Tools are registered and callable:
-  - `delegate.run` creates a run directory and writes `request.json`
-  - `delegate.resume` creates a run directory and writes `request.json`
+  - `delegate.run` creates a run directory and writes `request.json`, `skills_index.json`, `selected_skills.json`
+  - `delegate.resume` creates a run directory and writes `request.json`, `skills_index.json`, `selected_skills.json`
 - Run directories are created under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`.
 
 ## Project structure
