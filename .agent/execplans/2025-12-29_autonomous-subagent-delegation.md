@@ -2,9 +2,9 @@
 
 > **Recommended execution:** Use `executing-plans` to implement this plan task-by-task (batch + checkpoints).
 
-**Goal:** In Codex interactive mode, “normal” user prompts naturally trigger delegation to this MCP server when it’s beneficial, without the user needing to write explicit `delegate.*` tool calls.
+**Goal:** In Codex interactive mode, “normal” user prompts naturally trigger delegation to this MCP server when it’s beneficial, without the user needing to write explicit tool calls.
 
-**Architecture:** Add a new MCP tool `delegate.autopilot` (minimal input schema) that can orchestrate one or more specialized sub-agent runs (parallel or sequential) and return an aggregated, artifact-first result. Add a Codex skill (installed globally) that teaches the *parent* Codex agent when/how to call `delegate.autopilot` automatically, while ensuring delegated *sub-agents* never recurse into `delegate.*`.
+**Architecture:** Add a new MCP tool `delegate_autopilot` (minimal input schema) that can orchestrate one or more specialized sub-agent runs (parallel or sequential) and return an aggregated, artifact-first result. Add a Codex skill (installed globally) that teaches the *parent* Codex agent when/how to call `delegate_autopilot` automatically, while ensuring delegated *sub-agents* never recurse into `delegate_*`.
 
 **Tech Stack:** Node.js >= 20, TypeScript (NodeNext ESM), `@modelcontextprotocol/sdk`, `zod/v4`, (optional) `yaml` for robust skill frontmatter parsing.
 
@@ -28,7 +28,7 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 ## Progress
 
 - [x] (2025-12-29 21:05 CET) Land plan in-repo (baseline for implementation). (`47dc4ff`)
-- [ ] (2025-12-29 21:05 CET) Implement `delegate.autopilot` and global skill-driven calling behavior.
+- [x] (2025-12-29 21:05 CET) Implement `delegate_autopilot` and global skill-driven calling behavior. (see commits above)
 - [x] (2025-12-29 21:08 CET) Task 1: Add autopilot schemas + tests. (`0a23795`)
 - [x] (2025-12-29 21:11 CET) Task 2: Add `routeAutopilotTask(...)` heuristics + tests. (`d0cd66f`)
 - [x] (2025-12-29 21:13 CET) Task 3: Add concurrency-limited `runJobs(...)` helper + tests. (`d205d4e`)
@@ -37,8 +37,8 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 - [x] (2025-12-29 21:22 CET) Task 5b: Add repo-local `delegation-autopilot` skill (template for global install). (`9611210`)
 - [x] (2025-12-29 21:24 CET) Task 5c: Update docs (`README.md`, `AGENTS.md`) for `delegate.autopilot` + global skill install. (`553e8cd`)
 - [x] (2025-12-29 21:28 CET) Fix `tsc` build errors; `npm test`, `npm run build`, `npm run lint` pass. (`a7b9484`)
-- [ ] (2025-12-29 21:32 CET) Rename MCP tools to `delegate_*` (Codex tool name pattern compatibility) + update docs/skills.
-- [ ] (2025-12-29 21:32 CET) Manual Codex verification: `codex exec` can run with this MCP enabled; complex prompt triggers `delegate_autopilot`.
+- [x] (2025-12-29 21:36 CET) Rename MCP tools to `delegate_*` (Codex tool name pattern compatibility) + update docs/skills. (`80e5563`, `486e3bc`, `2e6c01e`)
+- [x] (2025-12-29 21:38 CET) Manual Codex verification: `codex exec` runs with this MCP enabled and can call `delegate_autopilot`. (see **Artifacts and Notes**)
 
 ## Surprises & Discoveries
 
@@ -56,7 +56,7 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
   Date/Author: 2025-12-29 / agent
 
 - Decision: Gate “autonomous calling” primarily through a global Codex skill installed in `${CODEX_HOME:-~/.codex}/skills`.
-  Rationale: This is the only practical way to teach the parent interactive Codex agent to call `delegate.autopilot` consistently without user-written JSON.
+  Rationale: This is the only practical way to teach the parent interactive Codex agent to call `delegate_autopilot` without user-written JSON.
   Date/Author: 2025-12-29 / agent
 
 - Decision: Rename tools from `delegate.*` to `delegate_*` (`delegate_run`, `delegate_resume`, `delegate_autopilot`) to satisfy Codex/OpenAI tool-name restrictions (no dots).
@@ -380,6 +380,7 @@ Manual:
 ## Artifacts and Notes
 
 - Put manual transcripts under `.agent/execplans/artifacts/2025-12-29_autonomous-subagent-delegation/` (gitignored by default).
+- Manual verification (explicit tool call): `codex exec` created run dir `~/.codex/delegator/runs/2025-12-29_203731284_be3f41daf129/` (tool `delegate_autopilot`, `should_delegate=false`).
 
 ## Interfaces and Dependencies
 
