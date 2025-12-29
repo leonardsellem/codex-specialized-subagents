@@ -37,6 +37,8 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 - [x] (2025-12-29 21:22 CET) Task 5b: Add repo-local `delegation-autopilot` skill (template for global install). (`9611210`)
 - [x] (2025-12-29 21:24 CET) Task 5c: Update docs (`README.md`, `AGENTS.md`) for `delegate.autopilot` + global skill install. (`553e8cd`)
 - [x] (2025-12-29 21:28 CET) Fix `tsc` build errors; `npm test`, `npm run build`, `npm run lint` pass. (`a7b9484`)
+- [ ] (2025-12-29 21:32 CET) Rename MCP tools to `delegate_*` (Codex tool name pattern compatibility) + update docs/skills.
+- [ ] (2025-12-29 21:32 CET) Manual Codex verification: `codex exec` can run with this MCP enabled; complex prompt triggers `delegate_autopilot`.
 
 ## Surprises & Discoveries
 
@@ -44,6 +46,8 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
   Evidence: …
 - Observation: `npm test` (via `tsx`) passed while `tsc` failed due to an unexported type import + inferred union widening.
   Evidence: `npm run build` failed before `a7b9484`, then passed after.
+- Observation: `codex exec` failed with HTTP 400 because at least one MCP tool name didn’t match the OpenAI tool-name regex `^[a-zA-Z0-9_-]+$` (dots are rejected).
+  Evidence: `codex exec` failed with this MCP enabled, and succeeded when run with `-c mcp_servers.codex-specialized-subagents.enabled=false`.
 
 ## Decision Log
 
@@ -53,6 +57,10 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 
 - Decision: Gate “autonomous calling” primarily through a global Codex skill installed in `${CODEX_HOME:-~/.codex}/skills`.
   Rationale: This is the only practical way to teach the parent interactive Codex agent to call `delegate.autopilot` consistently without user-written JSON.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Rename tools from `delegate.*` to `delegate_*` (`delegate_run`, `delegate_resume`, `delegate_autopilot`) to satisfy Codex/OpenAI tool-name restrictions (no dots).
+  Rationale: With dot-named tools enabled, `codex exec` fails early with HTTP 400 and cannot call any tools.
   Date/Author: 2025-12-29 / agent
 
 ## Outcomes & Retrospective
