@@ -2,11 +2,13 @@
 
 > **Recommended execution:** Use `executing-plans` to implement this plan task-by-task (batch + checkpoints).
 
-**Goal:** When `delegate_autopilot` decides to delegate, it assigns a “thinking level” to each sub-agent job (scan/implement/verify) and uses that level to run different Codex models per job (via `codex exec` parameters).
+**Parent macro ExecPlan:** `.agent/execplans/archive/2025-12-29_autonomous-subagent-delegation.md` (shipped `delegate_*` tools + `delegate_autopilot` routing/orchestration).
 
-**Architecture:** Keep routing pure and deterministic (based on job type + task complexity), but resolve actual model IDs from environment variables at runtime so the server is safe by default and configurable per user. Persist the decision in `autopilot_plan.json` and in each job’s `request.json`, and pass the resolved model into the `codex exec` invocation.
+**Goal:** When `delegate_autopilot` decides to delegate, it assigns a deterministic `thinking_level` to each autopilot job (`scan` / `implement` / `verify`). At runtime, `thinking_level` may be resolved into per-job Codex CLI config overrides (primarily model selection) and passed into each `codex exec` sub-run.
 
-**Tech Stack:** Node.js (ESM) + TypeScript + `@modelcontextprotocol/sdk` + `zod/v4` + `node:test`.
+**Architecture:** Keep routing pure and deterministic (job type + task text heuristics), but resolve provider-specific configuration (model IDs / Codex config overrides) from environment variables at runtime so default behavior is unchanged unless configured. Persist the decision in `autopilot_plan.json` and in each job’s `request.json` (written under `subruns/<job_id>/request.json`), and pass the resolved overrides into `runCodexExec` (which already supports `-c/--config`).
+
+**Tech Stack:** Node.js >= 20 (ESM/NodeNext) + TypeScript + `@modelcontextprotocol/sdk` + `zod/v4` + `node:test`.
 
 ---
 
@@ -23,29 +25,43 @@ After this change:
 
 ## Progress
 
-- [ ] (2025-12-29 00:00) Confirm how to override model per `codex exec`.
-- [ ] (2025-12-29 00:00) Add “thinking level” + model override fields to autopilot job types.
-- [ ] (2025-12-29 00:00) Implement deterministic thinking-level routing in `routeAutopilotTask`.
-- [ ] (2025-12-29 00:00) Resolve models from env and pass overrides into `runCodexExec` for autopilot jobs.
-- [ ] (2025-12-29 00:00) Add unit tests (TDD) and update docs.
-- [ ] (2025-12-29 00:00) Verify `npm test`, `npm run lint`, `npm run build`; optionally run integration tests.
+- [x] (2025-12-29 23:23) Ground this ExecPlan with external research + repo scan (Codex CLI flags, existing autopilot/runCodexExec wiring, current job IDs).
+- [x] (2025-12-29 23:30) Confirm the exact `codex` CLI flags we will rely on (`--config/-c`, `--model/-m`) and how they behave in our local setup. (see **Artifacts and Notes**)
+- [ ] (2025-12-29 23:23) Add `thinking_level` + (optional) per-job Codex override fields to autopilot job schema (`src/lib/delegation/types.ts`).
+- [ ] (2025-12-29 23:23) Assign deterministic `thinking_level` in `routeAutopilotTask` for each job (`src/lib/delegation/route.ts`) and cover it with unit tests.
+- [ ] (2025-12-29 23:23) Resolve per-job model/config overrides from env in `runAutopilot`, persist the enriched plan, and pass overrides into `runCodexExec` (`src/lib/delegation/autopilot.ts`).
+- [ ] (2025-12-29 23:23) Add unit tests (TDD) for env mapping + `runCodexExec({ configOverrides })` wiring.
+- [ ] (2025-12-29 23:23) Update docs (`docs/reference/tools.md`, `docs/usage.md`, `README.md`) and verify `npm test`, `npm run lint`, `npm run build` (optionally `RUN_CODEX_INTEGRATION_TESTS=1 npm test`).
 
 ## Surprises & Discoveries
 
-- Observation: (none yet)
+- Observation: Codex CLI supports global `--config/-c key=value` overrides and `--model/-m <model>`; in our local Codex CLI, `--config/-c` values are parsed as TOML and fall back to a raw literal string when TOML parsing fails.
+  Evidence: `codex exec --help` (local) and `https://developers.openai.com/codex/cli-reference` (external)
+- Observation: Codex config includes `model_reasoning_effort` with values `minimal | low | medium | high | xhigh` (useful future extension for mapping `thinking_level` to reasoning depth).
+  Evidence: `https://developers.openai.com/codex/config-reference`
+- Observation: This repo already has the correct hook point for per-run Codex config: `runCodexExec({ configOverrides?: string[] })` passes each entry as `codex exec -c <override> ...` (no shell quoting; args are passed as an array).
+  Evidence: `src/lib/codex/runCodexExec.ts`
+- Observation: Autopilot job IDs are already standardized and phase-split is hard-coded by ID (`scan` → pre, `implement` → work, `verify` → post); this plan must keep those IDs stable.
+  Evidence: `src/lib/delegation/route.ts`, `src/lib/delegation/autopilot.ts`
+- Observation: In Zod v4, `.default(...)` provides a value when input is `undefined` (and `.extend(...)` is the standard way to add fields to existing object schemas); use this deliberately when adding new fields so the inferred TS types match what we actually construct/emit.
+  Evidence: Context7 (`/colinhacks/zod/v4.0.1`) docs for `.default()` and `.extend()`
 
 ## Decision Log
 
-- Decision: Represent “thinking level” as `low | medium | high` on each autopilot job and keep it **optional** for backwards compatibility.
-  Rationale: Easy to reason about, stable across providers, and won’t break consumers of existing artifacts.
+- Decision: Represent “thinking level” as `low | medium | high` on each autopilot job as `thinking_level` (snake_case), and always emit it in `plan.jobs[]`.
+  Rationale: Deterministic, provider-agnostic label; aligns with existing job fields (`skills_mode`, `skip_git_repo_check`, …) and makes the plan debuggable without inspecting prompts.
   Date/Author: 2025-12-29 / agent
 
-- Decision: Use `codex exec` config overrides (`-c model="..."`) rather than adding a new `runCodexExec` API surface immediately.
-  Rationale: `src/lib/codex/runCodexExec.ts` already supports `configOverrides`, and Codex CLI explicitly documents `-c model="..."`.
+- Decision: Use existing `runCodexExec({ configOverrides })` and pass Codex CLI `--config/-c` overrides (including `model=<id>`), instead of introducing a new `runCodexExec({ model })` parameter in v1.
+  Rationale: `src/lib/codex/runCodexExec.ts` already supports repeated `-c` flags and avoids shell quoting issues by piping prompts via stdin.
   Date/Author: 2025-12-29 / agent
 
-- Decision: Resolve model IDs from environment variables so default behavior remains unchanged unless configured.
-  Rationale: Avoid hard-coding model IDs (provider-specific and unstable) while still enabling per-job model selection.
+- Decision: Resolve per-level model IDs from environment variables so default behavior remains unchanged unless configured.
+  Rationale: Avoid hard-coding model IDs (provider-specific/unstable) while still enabling per-job model selection.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Keep routing pure: `routeAutopilotTask` assigns `thinking_level` deterministically (job id + task text heuristics), while `runAutopilot` resolves environment-dependent overrides and persists the enriched plan.
+  Rationale: Preserves the “pure router” architecture from the parent macro ExecPlan while still making runtime decisions visible in artifacts.
   Date/Author: 2025-12-29 / agent
 
 ## Outcomes & Retrospective
@@ -57,8 +73,8 @@ After this change:
 Key files:
 - `src/lib/delegation/types.ts`: Zod schemas/types for autopilot input/output and job shapes.
 - `src/lib/delegation/route.ts`: Heuristic routing that decides whether to delegate and constructs the `plan.jobs`.
-- `src/lib/delegation/autopilot.ts`: Writes parent artifacts (`autopilot_*.json`) and executes jobs by calling `runCodexExec`.
-- `src/lib/codex/runCodexExec.ts`: Spawns `codex exec` and supports `configOverrides` (passed as `-c key=value`).
+- `src/lib/delegation/autopilot.ts`: Writes parent artifacts (`autopilot_*.json`) and executes jobs by calling `runCodexExec` (phased by job id: `scan`, `implement`, `verify`).
+- `src/lib/codex/runCodexExec.ts`: Spawns `codex exec` and already supports `configOverrides` (passed as repeated `-c/--config key=value` flags).
 
 Relevant tests:
 - `src/tests/delegation/route.test.ts`
@@ -72,7 +88,13 @@ Docs that should be updated after implementation:
 
 Terminology:
 - **Thinking level:** a coarse classification (`low|medium|high`) chosen by the server per autopilot job.
-- **Model override:** a concrete Codex model identifier (string) passed to `codex exec` to influence reasoning/latency/cost.
+- **Config override:** a Codex CLI `--config/-c key=value` override passed to `codex exec` (this plan uses it primarily for `model=<id>`).
+
+External references used for grounding (Phase A):
+- Codex CLI flags and `--config` semantics: `https://developers.openai.com/codex/cli-reference`
+- Codex basic config and `model_reasoning_effort` overview: `https://developers.openai.com/codex/config-basic`
+- Codex config reference (`model_reasoning_effort` allowed values): `https://developers.openai.com/codex/config-reference`
+- Codex MCP server registration (`codex mcp add ... -e KEY=VALUE -- <cmd>`): `https://developers.openai.com/codex/mcp`
 
 Configuration (proposed):
 - `CODEX_AUTOPILOT_MODEL_LOW`: model ID to use for `thinking_level=low`
@@ -83,17 +105,21 @@ If a given env var is unset/empty, the server should **not** override the model 
 
 ## Plan of Work
 
-1) Confirm the correct mechanism to force a model for `codex exec` (baseline: `-c model="..."`).
-2) Extend autopilot job schema to include `thinking_level`, and (optionally) `model` + `config_overrides` for transparency.
+1) Confirm the exact Codex CLI flags we will rely on and how to express model overrides (`--config/-c model=<id>` vs `--model/-m`).
+2) Extend autopilot job schema to include `thinking_level`, plus optional transparency fields for per-job Codex overrides (`model`, `config_overrides`).
 3) Update routing to assign `thinking_level` deterministically per job:
    - `scan`: `low`
    - `verify`: `low`
-   - `implement`: based on task complexity (`high` for cross-cutting/security/research; otherwise `medium`)
-4) In `runAutopilot`, resolve each job’s `thinking_level` into a model override from env and:
-   - write the enriched plan to `autopilot_plan.json` (so the plan “delivered” includes thinking levels)
-   - pass `config_overrides` into `runCodexExec` when running each job
-5) Add/adjust tests using dependency injection (`runAutopilot(..., { deps: { runCodexExec } })`) to assert the chosen overrides are applied.
-6) Update docs to explain configuration and to document the new plan fields.
+   - `implement`: `medium` by default; `high` for security/research-heavy or very large/cross-cutting tasks (deterministic heuristic).
+4) In `runAutopilot`, resolve each job’s `thinking_level` into a model override from env, enrich `plan.jobs[]` with:
+   - `model` (optional, resolved from env)
+   - `config_overrides` (optional list of `-c/--config` overrides, e.g. `model=<id>`)
+   Persist the enriched plan to `autopilot_plan.json` and run jobs using the enriched job objects.
+5) Pass `job.config_overrides` into `runCodexExec({ configOverrides })` for each autopilot job.
+6) Add/adjust unit tests (TDD) to assert:
+   - deterministic `thinking_level` assignment in routing
+   - env mapping → `configOverrides` wiring in autopilot orchestration (without requiring real `codex` calls)
+7) Update docs to explain configuration and document the new plan fields.
 
 ## Concrete Steps
 
@@ -102,16 +128,17 @@ If a given env var is unset/empty, the server should **not** override the model 
 **Goal:** Verify the CLI mechanism we’re about to rely on is real/stable.
 
 Run:
-- `codex exec --help | rg -n -- \"--model|model=\\\"\"`
+- `codex --help | rg -n -- "--config|--model"`
+- `codex exec --help | rg -n -- "--config|--model"`
 
 Optional runtime check (requires Codex auth/network):
 - Run a tiny command twice with different overrides and inspect the `--json` stream for a model identifier.
-  - `echo 'Return JSON {\"summary\":\"ok\",\"deliverables\":[],\"open_questions\":[],\"next_actions\":[]}' | codex exec --json -c model=\"<SOME_MODEL>\" -`
-  - `echo 'Return JSON {\"summary\":\"ok\",\"deliverables\":[],\"open_questions\":[],\"next_actions\":[]}' | codex exec --json -c model=\"<ANOTHER_MODEL>\" -`
+  - `echo 'Return JSON {\"summary\":\"ok\",\"deliverables\":[],\"open_questions\":[],\"next_actions\":[]}' | codex exec --json -c model=<SOME_MODEL> -`
+  - `echo 'Return JSON {\"summary\":\"ok\",\"deliverables\":[],\"open_questions\":[],\"next_actions\":[]}' | codex exec --json -c model=<ANOTHER_MODEL> -`
   - Search output for fields like `model` / `model_id`.
 
 Expected:
-- CLI accepts `-c model="..."` without error (even if the model ID is invalid, error messaging should be clear).
+- CLI accepts `-c model=<...>` without error (even if the model ID is invalid, error messaging should be clear).
 
 ### Task 1: Add thinking-level + model override fields to autopilot job schema
 
@@ -128,17 +155,17 @@ export const ThinkingLevelSchema = z.enum(["low", "medium", "high"]);
 export type ThinkingLevel = z.infer<typeof ThinkingLevelSchema>;
 ```
 
-Extend `AutopilotJobSchema` with new optional fields:
+Extend `AutopilotJobSchema` with new fields:
 
 ```ts
-thinking_level: ThinkingLevelSchema.optional().default("medium"),
+thinking_level: ThinkingLevelSchema,
 model: z.string().optional(),
 config_overrides: z.array(z.string()).optional(),
 ```
 
 Notes:
-- Keep everything **optional** so old artifacts/clients don’t break.
-- `config_overrides` should be a list of Codex CLI `-c` overrides (e.g., `model="o3"`).
+- `model` is the resolved Codex model ID (resolved from env; omit when not overriding).
+- `config_overrides` is the list passed to `runCodexExec({ configOverrides })`; each entry must be in Codex CLI `--config/-c key=value` form (example: `model=<MODEL_ID>`).
 
 **Step 2: Run typecheck**
 
@@ -170,16 +197,17 @@ Expected: FAIL (until implementation exists).
 
 **Step 2: Implement routing logic**
 
-In `buildJobs(...)`, add `thinking_level` when constructing each job:
+In `buildJobs(...)`, add `thinking_level` when constructing each job (this keeps routing deterministic and colocated with the existing job construction):
 - `scan`: `"low"`
 - `verify`: `"low"`
-- `implement`: compute from the same signals already available (task length, clause count, categories).
+- `implement`: compute from task text using the existing helpers in this file (`countWorkCategories`, `countClauses`), so there’s no duplicate keyword logic.
 
 Suggested minimal heuristic for `implement`:
 - `high` if any of:
-  - category includes `security` or `research`
-  - task length >= 300
+  - categories include `security` or `research`
   - categories.size >= 3
+  - clauseCount >= 4
+  - task length >= 400
 - otherwise `medium`
 
 Keep this heuristic in a small helper (to avoid repeating magic numbers).
@@ -193,7 +221,7 @@ Expected: PASS
 
 **Files:**
 - Modify: `src/lib/delegation/autopilot.ts`
-- (Optional) Create: `src/lib/delegation/thinkingModels.ts`
+- (Optional) Create: `src/lib/delegation/thinkingModels.ts` (pure helper: `thinking_level` + env → `{ model?, config_overrides? }`)
 - Add test: `src/tests/delegation/autopilot-models.test.ts` (new)
 
 **Step 1: Write failing test (recommended)**
@@ -201,7 +229,7 @@ Expected: PASS
 Create `src/tests/delegation/autopilot-models.test.ts` to verify:
 - plan contains `thinking_level`
 - plan contains `model` (when env vars are set)
-- `runCodexExec` is called with `configOverrides` including `model="..."`
+- `runCodexExec` is called with `configOverrides` including `model=<...>`
 
 Test approach:
 - Use `runAutopilot(..., { env, deps: { discoverSkills, runCodexExec } })`.
@@ -235,10 +263,10 @@ function resolveModelForThinkingLevel(level: "low" | "medium" | "high", env: Nod
 
 Then, in `runAutopilot(...)`, after `const routed = routeAutopilotTask(...)` and **before** writing `autopilot_plan.json`:
 - compute `const env = options.env ?? process.env`
-- map `routed.plan.jobs` into `jobsWithModels`:
+- map `routed.plan.jobs` into `jobsWithOverrides`:
   - `model`: resolved model (or omit)
-  - `config_overrides`: if model exists, `['model="<model>"']` (ensure TOML quoting)
-- write the enriched plan to `planPath`
+  - `config_overrides`: if model exists, `["model=<model>"]` (no shell quoting needed; args are passed as an array)
+- write the enriched plan to `planPath` (so artifacts reflect what actually ran)
 - use the enriched plan for job execution and for returning `structuredContent.plan`
 
 **Step 3: Pass overrides into `runCodexExec`**
@@ -250,6 +278,12 @@ configOverrides: options.job.config_overrides,
 ```
 
 to `options.deps.runCodexExec(...)`.
+
+Also pass the same `env` used for `createRunDir`/`discoverSkills` into `runCodexExec` for consistency (thread `env` through `runAutopilot` → `runAutopilotJob` → `runCodexExec`, so `CODEX_HOME` and related env are coherent in tests and integrations):
+
+```ts
+env: options.env,
+```
 
 **Step 4: Run tests**
 
@@ -266,10 +300,11 @@ Expected: PASS
 **Step 1: Document new plan fields**
 
 In `docs/reference/tools.md`, update the `delegate_autopilot` section:
-- Document that each `plan.jobs[]` entry may include:
+- Document that each `plan.jobs[]` entry includes:
   - `thinking_level`: `"low" | "medium" | "high"`
-  - `model`: string (optional)
-  - `config_overrides`: string[] (optional)
+  and may include:
+  - `model`: string (optional; resolved model override)
+  - `config_overrides`: string[] (optional; `-c/--config` overrides passed to `codex exec`)
 
 **Step 2: Document configuration**
 
@@ -306,7 +341,7 @@ Manual smoke test (best-effort):
 2) Trigger `delegate_autopilot` with a cross-cutting task so jobs include scan/implement/verify.
 3) Inspect `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/autopilot_plan.json` and each `subruns/<job_id>/request.json` to confirm:
    - `thinking_level` is present per job
-   - `config_overrides` includes `model="..."` for jobs where an env mapping exists
+   - `config_overrides` includes `model=<...>` for jobs where an env mapping exists
 
 ## Validation and Acceptance
 
@@ -335,19 +370,26 @@ Store any spikes/transcripts under:
 - `.agent/execplans/artifacts/2025-12-29_autopilot-thinking-level-per-job/`
 
 Suggested artifacts:
-- Output of `codex exec --help` snippet showing `-c model="..."` support
+- Output of `codex exec --help` snippet showing `--config/-c` + `--model/-m` support
 - Sample `autopilot_plan.json` and `subruns/*/request.json` (redacted if needed)
+
+Local CLI evidence (2025-12-29):
+- `codex exec --help` includes:
+  - `-c, --config <key=value>` (parsed as TOML; fall back to raw literal string)
+  - `-m, --model <MODEL>`
+- `codex mcp add --help` includes:
+  - `--env <KEY=VALUE>` (for stdio servers)
 
 ## Interfaces and Dependencies
 
 Public-ish interface changes:
-- `delegate_autopilot` tool output (`structuredContent.plan.jobs[]`) gains optional fields:
-  - `thinking_level`
-  - `model`
-  - `config_overrides`
+- `delegate_autopilot` tool output (`structuredContent.plan.jobs[]`) gains:
+  - `thinking_level` (always present on each planned job)
+  - `model` (optional)
+  - `config_overrides` (optional)
 
 Execution dependency:
-- Codex CLI must accept `-c model="..."` overrides (documented in `codex exec --help`).
+- Codex CLI must accept `-c/--config model=...` overrides (documented in `codex exec --help`).
 
 Environment variables (server process):
 - `CODEX_AUTOPILOT_MODEL_LOW`
