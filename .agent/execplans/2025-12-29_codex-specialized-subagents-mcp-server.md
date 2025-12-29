@@ -4,56 +4,91 @@ This ExecPlan is a living document. Keep `Progress`, `Surprises & Discoveries`, 
 
 ## Purpose / Big Picture
 
-Build a local MCP server (stdio) that gives Codex a **first-class delegation tool**:
+Build a local (stdio) MCP server that lets Codex delegate work to isolated **`codex exec` sub-agents**.
 
-- Codex calls `delegate.run` / `delegate.resume`
-- The MCP server spawns a **separate `codex exec` sub-agent process** (a “specialist”)
-- The server **selects relevant Codex skills** from:
-  - repo-local `.codex/skills` (nearest ancestor of the requested `cwd`)
-  - global `${CODEX_HOME:-~/.codex}/skills`
-- The server writes full sub-agent logs + outputs to disk (run directory), and returns only a **small structured summary** + artifact paths to keep the main chat context light.
+In v1, Codex can call:
+- `delegate.run` — spawn a new specialist sub-agent (new `codex exec` run)
+- `delegate.resume` — resume a prior specialist session (`codex exec resume <thread_id>`)
 
-How you can see it working:
-- Register the MCP server in Codex (`codex mcp add …`)
-- In any repo, ask Codex to delegate a task (Codex should call `delegate.run`)
-- Verify a new run folder exists with `events.jsonl`, `last_message.json`, `result.json`, `skills_index.json`, `selected_skills.json`.
+The server:
+- Discovers skills from:
+  - **repo-local** `.codex/skills` (nearest ancestor of the delegated `cwd`)
+  - **global** `${CODEX_HOME:-~/.codex}/skills`
+- Selects skills (explicit or auto) and references them by **name + path** in the sub-agent prompt (does not inline skill bodies).
+- Writes a full run directory (events, last message, metadata, skill index/selection) under:
+  - `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`
+- Returns only a small structured summary + artifact paths to keep the main chat context light.
+
+How you can see it working (end state):
+1) Register this MCP server with Codex: `codex mcp add …`
+2) Ask Codex to delegate a task (Codex calls `delegate.run`)
+3) Verify a new run directory exists and contains the expected files (see **Validation and Acceptance**)
 
 ## Progress
 
-- [x] (2025-12-29 19:18) Scaffolded repo with `lp-project-scaffold` and created this ExecPlan.
-- [x] (2025-12-29 19:25) Chose stack + added minimal Node/TS project skeleton (no delegation logic yet).
+- [x] (2025-12-29 19:18) Scaffolded repo with `lp-project-scaffold` and created initial ExecPlan.
+- [x] (2025-12-29 19:25) Added minimal Node/TS project skeleton (no delegation logic yet).
 - [x] (2025-12-29 19:26) Updated `README.md` + `AGENTS.md` to be repo-specific and point to this ExecPlan.
 - [x] (2025-12-29 19:27) Verified local commands: `npm install`, `npm run build`, `npm test`.
-- [ ] Implement skill discovery (repo + global) + selection (explicit/auto).
-- [ ] Implement `codex exec` runner (spawn + artifacts + thread_id extraction).
-- [ ] Implement MCP tools: `delegate.run`, `delegate.resume` (v1); consider `delegate.batch` later.
-- [ ] Add tests (unit + optional integration behind env flag).
-- [ ] Expand docs with tool API + examples (post-implementation).
-- [ ] Manual end-to-end smoke test in 2 repos.
+- [x] (2025-12-29 19:39) Re-grounded this ExecPlan via Context7 + web research + repo scan; wrote artifacts:
+  - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/external-research.md`
+  - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/repo-scan.md`
+- [ ] Milestone 1: MCP tool stubs + local client test (no `codex exec`).
+- [ ] Milestone 2: Run directory + tool output schema plumbing.
+- [ ] Milestone 3: Skill discovery + selection (+ persisted JSON artifacts).
+- [ ] Milestone 4: `codex exec` runner for `delegate.run` (events + last message + result summary).
+- [ ] Milestone 5: `delegate.resume`.
+- [ ] Milestone 6: Tests + docs + manual smoke tests in 2 repos.
 
 ## Surprises & Discoveries
 
-- Observation: `@modelcontextprotocol/sdk` expects `zod/v4` imports, which requires Zod v4.
-  Evidence: `npm view zod version` shows v4 exists; older Zod versions don’t export `zod/v4`.
-- Observation: `codex exec --json` emits JSONL events with a `thread.started` event that includes `thread_id`.
-  Evidence: run `codex exec --skip-git-repo-check --json "Say ok"` and inspect stdout.
+- Observation: `@modelcontextprotocol/sdk` has a required peer dependency on `zod` and internally imports `zod/v4` while supporting `zod/v3` and `zod/v4` entry points.
+  Evidence: `node_modules/@modelcontextprotocol/sdk/README.md`.
+
+- Observation: MCP tool handlers receive an `AbortSignal` (`extra.signal`) that flips when the client cancels a request; use it to terminate long-running work (kill the spawned `codex exec` process).
+  Evidence: `node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.d.ts`.
+
+- Observation: Codex MCP defaults are too low for delegated runs; `tool_timeout_sec` must be increased for this server to avoid tool-call timeouts.
+  Evidence: `https://developers.openai.com/codex/mcp`.
+
+- Observation: `codex exec --json` produces a JSONL event stream; `--output-schema` enforces structured final output; `-o <file>` writes the last assistant message to disk (use as `last_message.json`).
+  Evidence: `https://developers.openai.com/codex/sdk`.
+
+- Observation: No separate “parent macro ExecPlan” exists in this repo; the closest macro scope is the root `README.md` section “What this will provide (v1)”.
+  Evidence: `ls .agent/execplans` and `README.md`.
 
 ## Decision Log
 
-- Decision: Implement the MCP server in Node.js + TypeScript using `@modelcontextprotocol/sdk` and `zod`.
-  Rationale: Local stdio MCP is straightforward; TypeScript SDK provides tool schemas and output validation.
+- Decision: Keep entrypoints as-is (`src/cli.ts` → `src/server.ts`) and implement logic in small modules under `src/lib/`.
+  Rationale: Minimizes churn; matches current scaffold (`repo-scan.md`).
   Date/Author: 2025-12-29 / agent
 
-- Decision: Skills are “selected” by the MCP server and **named explicitly** in the sub-agent prompt, but not inlined.
-  Rationale: Keeps token usage low; source-of-truth stays in `.codex/skills/**/SKILL.md` and `${CODEX_HOME}/skills/**/SKILL.md`.
+- Decision: Use `McpServer.registerTool(...)` with Zod v4 schemas and return `structuredContent` (optionally with a small text `content` summary).
+  Rationale: Strong typing + output validation; aligns with MCP SDK conventions.
   Date/Author: 2025-12-29 / agent
 
-- Decision: Default run artifacts directory is `${CODEX_HOME:-~/.codex}/delegator/runs/<run-id>/`.
-  Rationale: Avoids polluting arbitrary repos; works across projects.
+- Decision: Standardize on Zod v4 entry point imports (`zod/v4`) for all MCP schema work in this repo.
+  Rationale: Avoid ambiguity/mixing when the SDK itself imports `zod/v4`.
   Date/Author: 2025-12-29 / agent
 
-- Decision: Prevent recursion by default: sub-agent runs with `-c 'mcp.servers=[]'`.
-  Rationale: Avoids “delegate calls delegate” loops; keeps behavior predictable.
+- Decision: Default delegated sub-agent sandbox to `read-only` unless explicitly requested by tool input.
+  Rationale: Delegation can modify files; safe-by-default reduces accidental writes.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Persist delegation artifacts under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/` and return paths rather than inlining content.
+  Rationale: Keeps main chat context small; artifacts are durable and inspectable.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Implement cancellation by honoring MCP `extra.signal` and killing the child `codex` process.
+  Rationale: Prevents orphaned processes and wasted compute after user cancels.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Prevent recursive delegation by (a) prompt-level guard (“do not call delegate.*”), and (b) if feasible, passing a Codex config override that disables this MCP server for the child process.
+  Rationale: Avoid “delegate calls delegate” loops.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Once tests are added, update `npm test` to run TypeScript tests directly (e.g., `node --test --import tsx`), rather than requiring a build step.
+  Rationale: Repo is TS-only; current `node --test` will not execute `.ts` tests without a loader/import.
   Date/Author: 2025-12-29 / agent
 
 ## Outcomes & Retrospective
@@ -62,136 +97,249 @@ How you can see it working:
 
 ## Context and Orientation
 
-### Key concepts
+### Key files and folders (repo-relative)
 
-- **Codex CLI**: `codex` binary that can run interactively or non-interactively (`codex exec`).
-- **Sub-agent**: a separate `codex exec` process spawned by this MCP server to do a focused task.
-- **Skill**: a directory containing `SKILL.md` with YAML frontmatter `name` + `description`.
-- **Repo-local skills**: nearest `.codex/skills` directory when walking upward from a target `cwd`.
-- **Global skills**: `${CODEX_HOME:-~/.codex}/skills`.
-- **Run directory**: where we store request, event log, output, and selected skills for a single delegation run.
+- `src/cli.ts` — executable entrypoint used by MCP registration (`dist/cli.js`)
+- `src/server.ts` — `startServer()`; currently only connects stdio transport
+- `package.json` — scripts + dependency versions
+- `.codex/skills/` — repo-scoped skills (currently only a README)
+- `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/` — research + transcripts
 
-### What “skill sourcing universal” means (constraints)
+### Definitions
 
-- Do not hardcode any user-specific absolute paths in code or docs.
-- Use `os.homedir()` + `CODEX_HOME` env var conventions.
-- Resolve repo-local `.codex/skills` by walking up from the provided `cwd`.
+- **Codex CLI**: `codex` binary; we spawn it in non-interactive mode via `codex exec`.
+- **Delegator server**: this repo’s MCP server process, started by Codex via `codex mcp add ... -- node ...`.
+- **Sub-agent**: a separate `codex exec` process doing a focused task.
+- **Skill**: a directory containing `SKILL.md` with YAML frontmatter including at least `name` and `description`.
+- **Repo-local skills root**: the nearest `.codex/skills` when walking upward from the delegated `cwd`.
+- **Global skills root**: `${CODEX_HOME:-~/.codex}/skills`.
+- **Run directory**: `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/` containing request + logs + outputs for one delegation call.
+
+### Assumptions / open questions (resolve during implementation)
+
+- How to best disable this MCP server for a child `codex exec` (exact config override key/value format). If unclear, ship v1 with prompt-only recursion guard.
+- Whether Codex (as an MCP client) supplies `progressToken` on tool calls; implement progress as best-effort and safe to ignore.
+- How to handle `cwd` that is not inside a git repo: decide whether to require an explicit `skip_git_repo_check=true` input flag.
 
 ## Plan of Work
 
-1) Add a minimal Node/TS project skeleton (build/test/dev commands exist and work).
-2) Implement skill discovery:
-   - parse `SKILL.md` frontmatter (`name`, `description`) from repo + global skill roots
-   - persist a `skills_index.json` in the run directory for traceability/debugging
-3) Implement skill selection:
-   - `skills_mode=explicit`: validate requested skill names exist
-   - `skills_mode=auto`: pick top `max_skills` by keyword overlap on `name` + `description`
-   - persist `selected_skills.json`
-4) Implement sub-agent runner:
-   - spawn `codex exec` with `--json`, `--output-schema`, and `-o <last_message.json>`
-   - write stdout to `events.jsonl`
-   - extract `thread_id` from the JSONL stream (`thread.started`)
-5) Implement MCP server tools:
-   - `delegate.run`: create run dir, discover/select skills, spawn sub-agent, validate output, return structured summary
-   - `delegate.resume`: same, but uses `codex exec resume <thread_id>`
-6) Write tests and run a local smoke test.
-7) Update docs (`README.md`, `AGENTS.md`) to match reality.
+Milestones are ordered to keep steps small and verifiable.
+
+### Milestone 1 — MCP tool stubs + local client test (no Codex exec)
+
+Edits/additions:
+- Update `src/server.ts` to register `delegate.run` and `delegate.resume` with placeholder handlers that:
+  - validate inputs via Zod
+  - create a run directory and write `request.json`
+  - return a structured response containing `run_id` and `run_dir`
+- Add `src/lib/runDirs.ts` (create run dir + write JSON safely)
+- Add an integration test that spawns `src/cli.ts` via stdio and calls the tool using the SDK client (`Client` + `StdioClientTransport`).
+
+Outcome:
+- `npm test` can list/call tools successfully without Codex installed/configured.
+
+### Milestone 2 — Skill discovery + selection
+
+Edits/additions:
+- Add `src/lib/skills/discover.ts`:
+  - walk up from delegated `cwd` to find `.codex/skills` (repo-local)
+  - enumerate `<skill>/**/SKILL.md` (both repo-local and global roots)
+- Add `src/lib/skills/parseSkillMarkdown.ts`: parse YAML frontmatter from `SKILL.md` (at least `name`, `description`).
+- Add `src/lib/skills/select.ts`: explicit vs auto selection.
+- Tool handlers persist:
+  - `<run_dir>/skills_index.json`
+  - `<run_dir>/selected_skills.json`
+
+Outcome:
+- `delegate.run` returns `selected_skills` and artifacts exist even if the index is empty.
+
+### Milestone 3 — `codex exec` runner for `delegate.run`
+
+Edits/additions:
+- Add `src/lib/codex/runCodexExec.ts`:
+  - Build args for `codex exec`:
+    - `--cd <cwd>`
+    - `--sandbox <read-only|workspace-write|danger-full-access>`
+    - `--json`
+    - `--output-schema <run_dir>/subagent_output.schema.json` (write this file before spawning)
+    - `-o <run_dir>/last_message.json`
+    - optionally `--skip-git-repo-check` (opt-in)
+    - optionally a config override to disable this MCP server for the child (if we can make it work)
+  - Stream:
+    - stdout → `<run_dir>/events.jsonl`
+    - stderr → `<run_dir>/stderr.log`
+  - Parse JSONL to find `thread_id` (if present) and write `<run_dir>/thread.json`.
+  - Write `<run_dir>/result.json` containing: timings, exit code/signal, thread_id, and pointers to the other artifacts.
+  - Respect cancellation: if MCP `extra.signal` aborts, kill the child process and mark the run as cancelled in `result.json`.
+- Update `delegate.run` handler to:
+  - build the sub-agent prompt:
+    - include task + role
+    - include selected skill names + on-disk paths
+    - include recursion guard text (“do not call delegate.* tools”)
+  - spawn codex exec via `runCodexExec(...)`
+  - return summary + artifact paths (do not inline artifacts)
+
+Outcome:
+- With Codex configured locally, `delegate.run` produces sub-agent work and a populated run directory.
+
+### Milestone 4 — `delegate.resume`
+
+Edits/additions:
+- Add/extend runner to support `codex exec resume <thread_id> "<follow-up>"` with the same artifacts/logging pattern.
+- Prefer creating a *new* run directory for resume calls (store `parent_thread_id` in `result.json`) for auditability.
+
+Outcome:
+- `delegate.resume` continues a previous thread and writes a new run directory.
+
+### Milestone 5 — Tests + docs + smoke tests
+
+Edits/additions:
+- Update `package.json` `test` script to run TS tests (`node --test --import tsx`).
+- Add unit tests for:
+  - SKILL.md parsing edge cases
+  - selection rules
+  - path/root discovery
+- Add an optional integration test that runs real `codex exec` only when `RUN_CODEX_INTEGRATION_TESTS=1` (because it requires auth/network).
+- Update `README.md` with:
+  - tool schemas (inputs/outputs)
+  - required Codex MCP `tool_timeout_sec` guidance
+  - example run directory layout
+
+Outcome:
+- `npm run build`, `npm test` pass; README describes real usage.
+- Manual smoke test passes in two separate repos.
 
 ## Concrete Steps
 
 > All commands run from the repo root unless noted.
+>
+> Keep actual smoke-test transcripts under:
+> `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/`.
 
-1) Create Node/TS skeleton:
-   - `npm init -y`
-   - Add deps: `npm install @modelcontextprotocol/sdk zod`
-   - Add dev deps: `npm install -D typescript tsx`
-   - Create `tsconfig.json` (NodeNext)
-   - Create `src/cli.ts` + `src/server.ts` (server skeleton only)
-   - Run: `npm run build`
+1) Implement Milestone 1:
+- Edit: `src/server.ts`
+- Add: `src/lib/runDirs.ts`, tests under `src/**/*.test.ts`
+- Run: `npm test`
+- Run: `npm run build`
 
-2) Add skill discovery utilities:
-   - Create `src/lib/skills.ts`
-   - Add unit tests under `src/lib/*.test.ts`
-   - Run: `npm test`
+2) Implement Milestone 2:
+- Add: `src/lib/skills/*`
+- Run: `npm test`
 
-3) Add selection utilities:
-   - Create `src/lib/skillSelect.ts`
-   - Run: `npm test`
+3) Implement Milestone 3 (requires Codex installed/configured):
+- Add: `src/lib/codex/runCodexExec.ts`
+- Run: `npm test`
+- Run: `npm run build`
+- Register MCP server globally:
+  - `codex mcp add codex-specialized-subagents -- node \"$(pwd)/dist/cli.js\"`
+  - `codex mcp list`
+- Ensure Codex MCP timeouts are high enough in `${CODEX_HOME:-~/.codex}/config.toml` for this server (increase `tool_timeout_sec`).
 
-4) Add codex exec runner:
-   - Create `src/lib/codexExec.ts`
-   - Run: `npm test`
-
-5) Add MCP tool implementations:
-   - Modify `src/server.ts` to register `delegate.run` / `delegate.resume`
-   - Run: `npm run build`
-
-6) Manual smoke test:
-   - Register: `codex mcp add codex-specialized-subagents -- node \"$(pwd)/dist/cli.js\"`
-   - In any repo: start `codex` and ask it to delegate a short research task.
+4) Manual smoke test in repo A + repo B:
+- In repo A, use Codex to call `delegate.run` on a short task.
+- Confirm run dir contains expected artifacts (below).
+- Repeat in repo B.
 
 ## Validation and Acceptance
 
-### Automated
+### Automated (CI-friendly)
 
-- Unit tests pass: `npm test`
-- Typecheck/build passes: `npm run build`
+- Typecheck/build: `npm run build`
+- Tests: `npm test`
 
 ### Manual acceptance story
 
-1) `codex mcp list` shows `codex-specialized-subagents` enabled.
-2) In repo A: Codex calls `delegate.run` and returns:
-   - `run_id`, `run_dir`, `subagent_thread_id`, `selected_skills`, `summary`, `next_actions`
-3) In repo B: same success.
-4) `run_dir` contains:
-   - `request.json`
-   - `events.jsonl`
-   - `last_message.json`
-   - `result.json`
-   - `skills_index.json`
-   - `selected_skills.json`
+1) Register server:
+- `codex mcp add codex-specialized-subagents -- node \"$(pwd)/dist/cli.js\"`
+- `codex mcp list` shows it enabled
+
+2) Tool call:
+- Codex calls `delegate.run` and gets a response with:
+  - `run_id`, `run_dir`
+  - `subagent_thread_id` (when available)
+  - `selected_skills` (names)
+  - `summary`, `next_actions`
+
+3) Run directory layout:
+`<run_dir>/` contains at least:
+- `request.json`
+- `skills_index.json`
+- `selected_skills.json`
+- `subagent_prompt.txt`
+- `events.jsonl`
+- `stderr.log`
+- `last_message.json`
+- `result.json`
+
+4) Resume:
+- Codex calls `delegate.resume` with `thread_id` and follow-up prompt
+- A new run directory is created and populated similarly
 
 ## Idempotence and Recovery
 
 - Safe to re-run:
-  - `npm install`, `npm test`, `npm run build`
-  - `codex mcp add …` (if the name already exists, remove/re-add)
+  - `npm install`, `npm test`, `npm run build`, `npm run dev`
+  - repeated tool calls (they create new run directories)
 - Recovery:
-  - Remove a bad MCP config: `codex mcp remove codex-specialized-subagents`
-  - Delete old run artifacts: remove `${CODEX_HOME:-~/.codex}/delegator/runs/<run-id>/` directories
+  - Remove MCP server: `codex mcp remove codex-specialized-subagents`
+  - Delete run artifacts: remove `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`
+  - If a tool call is cancelled, ensure the child `codex` process is terminated (verify via `ps`/Activity Monitor if debugging)
 
 ## Artifacts and Notes
 
-- Run artifacts live outside the repo by default: `${CODEX_HOME:-~/.codex}/delegator/runs/…`
-- Keep any smoke-test transcripts under:
-  - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/`
+Research/grounding (local; `.agent/execplans/artifacts/` is gitignored by default):
+- `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/external-research.md`
+- `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/repo-scan.md`
+
+Runtime artifacts (produced by implementation):
+- `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/...`
 
 ## Interfaces and Dependencies
 
 ### External dependencies
 
-- `codex` CLI available on PATH
-- Node.js (>= 20)
-- `@modelcontextprotocol/sdk` (TypeScript SDK)
-- `zod` v4 (for `zod/v4` import compatibility)
+- Node.js `>=20` (repo `engines`)
+- `codex` CLI on PATH (required for Milestones 3+)
+- `@modelcontextprotocol/sdk` (currently `^1.25.1`)
+- `zod` (currently `^4.2.1`)
 
-### MCP tools (v1)
+### MCP tool interfaces (v1)
 
-- `delegate.run` input (draft):
-  - `task` (string), `role` (string), `cwd` (string)
-  - `skills_mode`: `auto|explicit`
-  - `skills`: string[] (when explicit)
-  - `max_skills`: number (auto)
-  - `include_repo_skills`: boolean
-  - `include_global_skills`: boolean
-  - `sandbox`: `read-only|workspace-write|danger-full-access`
+`delegate.run` input (Zod schema):
+- `task`: string (required)
+- `cwd`: string (required; absolute path recommended)
+- `role`: string (optional; default `"specialist"`)
+- `skills_mode`: `"auto" | "explicit" | "none"` (default `"auto"`)
+- `skills`: string[] (explicit mode only)
+- `max_skills`: number (auto mode; default 6)
+- `include_repo_skills`: boolean (default true)
+- `include_global_skills`: boolean (default true)
+- `sandbox`: `"read-only" | "workspace-write" | "danger-full-access"` (default `"read-only"`)
+- `skip_git_repo_check`: boolean (default false)
 
-- `delegate.resume` input (draft):
-  - `thread_id` (string) + same fields as `delegate.run`
+`delegate.resume` input:
+- `thread_id`: string (required)
+- `task`: string (optional follow-up prompt)
+- everything else same as `delegate.run` (especially `cwd` + sandbox)
 
-### Sub-agent output (JSON, schema-enforced)
+Tool output (Zod schema):
+- `run_id`: string
+- `run_dir`: string
+- `subagent_thread_id`: string | null
+- `selected_skills`: { name: string; description?: string; origin: "repo" | "global"; path: string }[]
+- `summary`: string
+- `deliverables`: { path: string; description: string }[]
+- `open_questions`: string[]
+- `next_actions`: string[]
+- `artifacts`: { name: string; path: string }[]
+- `timing`: { started_at: string; finished_at: string | null; duration_ms: number | null }
+- `status`: `"completed" | "failed" | "cancelled"`
+- `error`: string | null
 
-- `summary` (string)
-- `deliverables` ({ path, description }[])
-- `open_questions` (string[])
-- `next_actions` (string[])
+### Sub-agent output (JSON, schema-enforced via `codex exec --output-schema`)
+
+The *sub-agent’s final answer* (written to `<run_dir>/last_message.json`) must be a single JSON object:
+- `summary`: string
+- `deliverables`: { path: string; description: string }[]
+- `open_questions`: string[]
+- `next_actions`: string[]
