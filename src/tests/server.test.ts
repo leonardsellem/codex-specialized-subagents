@@ -13,6 +13,8 @@ type DelegateToolOutput = {
   subagent_thread_id: string | null;
 };
 
+const RUN_CODEX_INTEGRATION_TESTS = process.env.RUN_CODEX_INTEGRATION_TESTS === "1";
+
 async function withTmpDir<T>(
   prefix: string,
   fn: (tmpDir: string) => Promise<T>,
@@ -26,14 +28,18 @@ async function withTmpDir<T>(
 }
 
 async function withClient<T>(
-  codexHome: string,
+  codexHome: string | null,
   fn: (client: Client) => Promise<T>,
 ): Promise<T> {
   const repoRoot = process.cwd();
+  const env = {
+    ...process.env,
+    ...(codexHome ? { CODEX_HOME: codexHome } : {}),
+  };
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: ["--import", "tsx", path.join(repoRoot, "src/cli.ts")],
-    env: { CODEX_HOME: codexHome },
+    env,
     stderr: "pipe",
   });
 
@@ -47,7 +53,7 @@ async function withClient<T>(
   }
 }
 
-test("delegate.run creates a run dir and request.json", async () => {
+test("mcp server registers delegate tools", async () => {
   await withTmpDir("codex-specialized-subagents-test-", async (tmpDir) => {
     const codexHome = path.join(tmpDir, "codex_home");
     await fs.mkdir(codexHome, { recursive: true });
@@ -55,29 +61,49 @@ test("delegate.run creates a run dir and request.json", async () => {
     await withClient(codexHome, async (client) => {
       const toolList = await client.listTools();
       assert.ok(toolList.tools.some((t) => t.name === "delegate.run"));
+      assert.ok(toolList.tools.some((t) => t.name === "delegate.resume"));
+    });
+  });
+});
 
+test(
+  "delegate.run runs codex exec and writes artifacts",
+  { skip: !RUN_CODEX_INTEGRATION_TESTS, timeout: 120_000 },
+  async () => {
+    await withClient(null, async (client) => {
       const callResult = await client.callTool({
         name: "delegate.run",
-        arguments: { task: "hello", cwd: process.cwd() },
+        arguments: {
+          task: "Return JSON with summary='ok' and empty arrays for deliverables/open_questions/next_actions.",
+          cwd: process.cwd(),
+          skills_mode: "none",
+        },
       });
 
       assert.ok(callResult.structuredContent);
       const output = callResult.structuredContent as unknown as DelegateToolOutput;
       assert.ok(output.run_id);
       assert.ok(output.run_dir);
-      assert.equal(output.subagent_thread_id, null);
+      assert.ok(output.subagent_thread_id === null || typeof output.subagent_thread_id === "string");
 
       const requestJson = JSON.parse(
         await fs.readFile(path.join(output.run_dir, "request.json"), "utf8"),
       );
       assert.equal(requestJson.tool, "delegate.run");
-      assert.equal(requestJson.request.task, "hello");
 
       await fs.access(path.join(output.run_dir, "skills_index.json"));
       await fs.access(path.join(output.run_dir, "selected_skills.json"));
+      await fs.access(path.join(output.run_dir, "subagent_prompt.txt"));
+      await fs.access(path.join(output.run_dir, "events.jsonl"));
+      await fs.access(path.join(output.run_dir, "stderr.log"));
+      await fs.access(path.join(output.run_dir, "last_message.json"));
+      await fs.access(path.join(output.run_dir, "result.json"));
+
+      assert.ok(output.run_dir.includes(`${path.sep}delegator${path.sep}runs${path.sep}`));
+      await fs.rm(output.run_dir, { recursive: true, force: true });
     });
-  });
-});
+  },
+);
 
 test("delegate.resume creates a run dir and request.json", async () => {
   await withTmpDir("codex-specialized-subagents-test-", async (tmpDir) => {

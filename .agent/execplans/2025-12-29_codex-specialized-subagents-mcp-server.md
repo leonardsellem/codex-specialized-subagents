@@ -36,7 +36,7 @@ How you can see it working (end state):
 - [x] (2025-12-29 19:58) Milestone 1: MCP tool stubs + local client test (no `codex exec`).
 - [x] (2025-12-29 20:03) Docs sync: updated `README.md` to reflect `delegate.*` stubs and added `npm test` to Quickstart.
 - [x] (2025-12-29 20:10) Milestone 2: Skill discovery + selection (+ persisted JSON artifacts).
-- [ ] Milestone 3: `codex exec` runner for `delegate.run` (events + last message + result summary).
+- [x] (2025-12-29 20:20) Milestone 3: `codex exec` runner for `delegate.run` (events + last message + result summary).
 - [ ] Milestone 4: `delegate.resume`.
 - [ ] Milestone 5: Tests + docs + manual smoke tests in 2 repos.
 
@@ -65,6 +65,9 @@ How you can see it working (end state):
 
 - Observation: TypeScript types for `fs.promises` do not include `Dirent`; import `Dirent` from `node:fs` when using `readdir(..., { withFileTypes: true })` with `promises as fs`.
   Evidence: `tsc` error `TS2694` while building `src/lib/skills/discover.ts`.
+
+- Observation: `codex exec` supports reading the prompt from stdin when `PROMPT` is `-`, which avoids shell escaping/argument-length issues.
+  Evidence: `codex exec --help` and `src/lib/codex/runCodexExec.ts`.
 
 ## Decision Log
 
@@ -118,6 +121,10 @@ How you can see it working (end state):
 
 - Decision: For `delegate.resume`, if `skills_mode="auto"` but the follow-up `task` is empty, treat selection as `"none"` and continue (with a warning) rather than failing the tool.
   Rationale: Resume calls can be valid even without new instructions; blocking on a missing task would be surprising.
+  Date/Author: 2025-12-29 / agent
+
+- Decision: Pipe `delegate.run` prompt via stdin (`codex exec -`) and persist it to `<run_dir>/subagent_prompt.txt` for reproducibility.
+  Rationale: Avoids quoting/escaping bugs and provides an inspectable artifact for every delegated run.
   Date/Author: 2025-12-29 / agent
 
 ## Outcomes & Retrospective
@@ -322,6 +329,9 @@ Research/grounding (local; `.agent/execplans/artifacts/` is gitignored by defaul
 
 Runtime artifacts (produced by implementation):
 - `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/...`
+
+Verification transcripts (kept minimal; details via `git log` + tests):
+- (2025-12-29 20:19) `RUN_CODEX_INTEGRATION_TESTS=1 npm test` passed (includes `delegate.run` calling real `codex exec` and verifying artifacts).
 
 ## Interfaces and Dependencies
 
