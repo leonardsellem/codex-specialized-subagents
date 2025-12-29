@@ -38,7 +38,7 @@ How you can see it working (end state):
 - [x] (2025-12-29 20:10) Milestone 2: Skill discovery + selection (+ persisted JSON artifacts).
 - [x] (2025-12-29 20:20) Milestone 3: `codex exec` runner for `delegate.run` (events + last message + result summary).
 - [x] (2025-12-29 20:27) Milestone 4: `delegate.resume`.
-- [ ] Milestone 5: Tests + docs + manual smoke tests in 2 repos.
+- [x] (2025-12-29 20:32) Milestone 5: Tests + docs + manual smoke tests in 2 repos.
 
 ## Surprises & Discoveries
 
@@ -71,6 +71,9 @@ How you can see it working (end state):
 
 - Observation: `codex exec` options (e.g., `-C`, `--sandbox`, `--json`, `--output-schema`, `-o`) work when placed before the `resume` subcommand (`codex exec [OPTIONS] resume <id> -`).
   Evidence: `RUN_CODEX_INTEGRATION_TESTS=1 npm test` (integration test exercises `delegate.resume`).
+
+- Observation: Codex MCP server config supports per-server `tool_timeout_sec` and `startup_timeout_ms` under `mcp_servers.<name>` in `${CODEX_HOME:-~/.codex}/config.toml` (defaults exist even if not explicitly set).
+  Evidence: `https://developers.openai.com/codex/mcp` and `codex mcp --help`.
 
 ## Decision Log
 
@@ -136,17 +139,48 @@ How you can see it working (end state):
 
 ## Outcomes & Retrospective
 
-(Fill in after shipping v1.)
+### Shipped (v1)
+
+- Stdio MCP server with tools:
+  - `delegate.run` → spawns a specialist sub-agent via `codex exec`
+  - `delegate.resume` → continues a prior session via `codex exec resume`
+- Skill discovery + selection:
+  - repo-local `.codex/skills` (nearest ancestor of delegated `cwd`)
+  - global `${CODEX_HOME:-~/.codex}/skills`
+  - persisted `skills_index.json` + `selected_skills.json` per run
+- Artifact-first run directories under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/` containing:
+  - request + skill artifacts + prompt + JSONL events + stderr + schema + last message + result (+ thread id best-effort)
+- Schema-enforced final sub-agent output via `codex exec --output-schema` + `--output-last-message`
+- Tests:
+  - unit tests for skill parsing/selection/discovery
+  - optional Codex integration tests gated by `RUN_CODEX_INTEGRATION_TESTS=1`
+- Docs:
+  - `README.md` updated with tool schemas, run dir layout, timeout guidance, and test modes
+
+### Not shipped / follow-ups
+
+- Config-level guard to disable this MCP server for the spawned child `codex exec` process (we rely on prompt-level recursion guard only).
+- Progress notifications (`progressToken`) for long-running tool calls (currently no streaming progress).
+- More advanced skill auto-selection (current heuristic is keyword overlap on `task` vs `name`/`description`).
+
+### Lessons learned
+
+- Always pipe Codex prompts via stdin (`codex exec -`) and persist the prompt to disk; quoting/escaping is a footgun.
+- MCP client timeouts are per-server; delegated runs need a higher `tool_timeout_sec` than defaults.
 
 ## Context and Orientation
 
 ### Key files and folders (repo-relative)
 
 - `src/cli.ts` — executable entrypoint used by MCP registration (`dist/cli.js`)
-- `src/server.ts` — `startServer()`; currently only connects stdio transport
+- `src/server.ts` — `startServer()`; registers `delegate.run`/`delegate.resume` and runs `codex exec` subprocesses
 - `package.json` — scripts + dependency versions
 - `.codex/skills/` — repo-scoped skills (currently only a README)
 - `.agent/execplans/artifacts/2025-12-29_codex-specialized-subagents-mcp-server/` — research + transcripts
+- `src/lib/runDirs.ts` — run directory creation + safe file writers
+- `src/lib/skills/*` — skill discovery + selection
+- `src/lib/codex/*` — `codex exec` runner + sub-agent output schema
+- `src/tests/*` — unit tests + optional integration tests
 
 ### Definitions
 
@@ -160,9 +194,9 @@ How you can see it working (end state):
 
 ### Assumptions / open questions (resolve during implementation)
 
-- How to best disable this MCP server for a child `codex exec` (exact config override key/value format). If unclear, ship v1 with prompt-only recursion guard.
-- Whether Codex (as an MCP client) supplies `progressToken` on tool calls; implement progress as best-effort and safe to ignore.
-- How to handle `cwd` that is not inside a git repo: decide whether to require an explicit `skip_git_repo_check=true` input flag.
+- (Open) How to best disable this MCP server for a child `codex exec` (exact config override key/value format). v1 ships with prompt-only recursion guard.
+- (Open) Whether Codex (as an MCP client) supplies `progressToken` on tool calls; v1 ignores progress tokens.
+- (Resolved) Handling `cwd` not inside a git repo: `skip_git_repo_check` input flag is supported and passed through to `codex exec`.
 
 ## Plan of Work
 
@@ -340,6 +374,9 @@ Runtime artifacts (produced by implementation):
 Verification transcripts (kept minimal; details via `git log` + tests):
 - (2025-12-29 20:19) `RUN_CODEX_INTEGRATION_TESTS=1 npm test` passed (includes `delegate.run` calling real `codex exec` and verifying artifacts).
 - (2025-12-29 20:26) `RUN_CODEX_INTEGRATION_TESTS=1 npm test` passed (includes `delegate.run` + `delegate.resume` end-to-end via `codex exec` / `codex exec resume`).
+- (2025-12-29 20:31) Manual smoke tests (built `dist/cli.js`, sandbox `read-only`) passed:
+  - repo A `cwd=/Users/leonardsellem/Documents/Manual Library/Dev/codex-specialized-subagents` → run dir `/Users/leonardsellem/.codex/delegator/runs/2025-12-29_193123118_82495a0d0a46`
+  - repo B `cwd=/Users/leonardsellem/Documents/Manual Library/Dev/codex-subagents-mcp` → run dir `/Users/leonardsellem/.codex/delegator/runs/2025-12-29_193147031_3eb53b8b3305`
 
 ## Interfaces and Dependencies
 
