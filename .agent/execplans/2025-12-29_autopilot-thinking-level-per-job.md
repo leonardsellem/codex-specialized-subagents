@@ -102,7 +102,7 @@ If a given env var is unset/empty, the server should **not** override the model 
 **Goal:** Verify the CLI mechanism we’re about to rely on is real/stable.
 
 Run:
-- `codex exec --help | rg -n \"--model|model=\\\"\"`
+- `codex exec --help | rg -n -- \"--model|model=\\\"\"`
 
 Optional runtime check (requires Codex auth/network):
 - Run a tiny command twice with different overrides and inspect the `--json` stream for a model identifier.
@@ -353,4 +353,3 @@ Environment variables (server process):
 - `CODEX_AUTOPILOT_MODEL_LOW`
 - `CODEX_AUTOPILOT_MODEL_MEDIUM`
 - `CODEX_AUTOPILOT_MODEL_HIGH`
-
