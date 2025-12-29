@@ -79,7 +79,7 @@ export async function startServer(): Promise<void> {
   });
 
   server.registerTool(
-    "delegate.autopilot",
+    "delegate_autopilot",
     {
       title: "Delegate Autopilot",
       description:
@@ -107,7 +107,7 @@ export async function startServer(): Promise<void> {
           content: [
             {
               type: "text",
-              text: `delegate.autopilot failed: ${message}`,
+              text: `delegate_autopilot failed: ${message}`,
             },
           ],
           structuredContent: {
@@ -137,7 +137,7 @@ export async function startServer(): Promise<void> {
   );
 
   server.registerTool(
-    "delegate.run",
+    "delegate_run",
     {
       title: "Delegate Run",
       description:
@@ -155,7 +155,7 @@ export async function startServer(): Promise<void> {
         const subagentPromptPath = path.join(runDir, "subagent_prompt.txt");
 
         await writeJsonFile(requestPath, {
-          tool: "delegate.run",
+          tool: "delegate_run",
           received_at: startedAt.toISOString(),
           request: args,
         });
@@ -235,7 +235,7 @@ export async function startServer(): Promise<void> {
           "Selected skills (read the SKILL.md at these paths; do not inline skill bodies):",
           skillsList,
           "",
-          "Recursion guard: do not call any delegate.* MCP tools.",
+          "Recursion guard: do not call any delegate_* MCP tools.",
           "",
           "Output requirements: return a single JSON object matching the provided output schema:",
           "- summary: string",
@@ -379,7 +379,7 @@ export async function startServer(): Promise<void> {
   );
 
   server.registerTool(
-    "delegate.resume",
+    "delegate_resume",
     {
       title: "Delegate Resume",
       description:
@@ -397,7 +397,7 @@ export async function startServer(): Promise<void> {
         const subagentPromptPath = path.join(runDir, "subagent_prompt.txt");
 
         await writeJsonFile(requestPath, {
-          tool: "delegate.resume",
+          tool: "delegate_resume",
           received_at: startedAt.toISOString(),
           request: args,
         });
@@ -422,7 +422,7 @@ export async function startServer(): Promise<void> {
         const selectionWarnings =
           args.skills_mode === "auto" && !args.task
             ? [
-                "skills_mode=auto ignored because delegate.resume task is empty; selected_skills is empty.",
+                "skills_mode=auto ignored because delegate_resume task is empty; selected_skills is empty.",
                 ...selection.warnings,
               ]
             : [...selection.warnings];
@@ -494,7 +494,7 @@ export async function startServer(): Promise<void> {
           "Selected skills (read the SKILL.md at these paths; do not inline skill bodies):",
           skillsList,
           "",
-          "Recursion guard: do not call any delegate.* MCP tools.",
+          "Recursion guard: do not call any delegate_* MCP tools.",
           "",
           "Output requirements: return a single JSON object matching the provided output schema:",
           "- summary: string",

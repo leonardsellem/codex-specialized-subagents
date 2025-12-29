@@ -81,7 +81,7 @@ function buildSubagentPrompt(options: {
     "Selected skills (read the SKILL.md at these paths; do not inline skill bodies):",
     buildSelectedSkillsList(options.selectedSkills),
     "",
-    "Recursion guard: do not call any delegate.* MCP tools.",
+    "Recursion guard: do not call any delegate_* MCP tools.",
     "",
     "Output requirements: return a single JSON object matching the provided output schema:",
     "- summary: string",
@@ -175,7 +175,7 @@ async function runAutopilotJob(options: {
   const subagentPromptPath = path.join(jobRunDir, "subagent_prompt.txt");
 
   await options.deps.writeJsonFile(requestPath, {
-    tool: "delegate.autopilot",
+    tool: "delegate_autopilot",
     received_at: startedAt.toISOString(),
     job: options.job,
   });
@@ -313,7 +313,7 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
   const aggregatePath = path.join(runDir, "autopilot_aggregate.json");
 
   await deps.writeJsonFile(requestPath, {
-    tool: "delegate.autopilot",
+    tool: "delegate_autopilot",
     received_at: startedAt.toISOString(),
     request: parsed,
   });

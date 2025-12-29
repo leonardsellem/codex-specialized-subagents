@@ -67,20 +67,20 @@ test("mcp server registers delegate tools", async () => {
 
     await withClient(codexHome, async (client) => {
       const toolList = await client.listTools();
-      assert.ok(toolList.tools.some((t) => t.name === "delegate.run"));
-      assert.ok(toolList.tools.some((t) => t.name === "delegate.resume"));
-      assert.ok(toolList.tools.some((t) => t.name === "delegate.autopilot"));
+      assert.ok(toolList.tools.some((t) => t.name === "delegate_run"));
+      assert.ok(toolList.tools.some((t) => t.name === "delegate_resume"));
+      assert.ok(toolList.tools.some((t) => t.name === "delegate_autopilot"));
     });
   });
 });
 
 test(
-  "delegate.run + delegate.resume run codex exec and write artifacts",
+  "delegate_run + delegate_resume run codex exec and write artifacts",
   { skip: !RUN_CODEX_INTEGRATION_TESTS, timeout: 240_000 },
   async () => {
     await withClient(null, async (client) => {
       const runResult = await client.callTool({
-        name: "delegate.run",
+        name: "delegate_run",
         arguments: {
           task: "Return JSON with summary='ok' and empty arrays for deliverables/open_questions/next_actions.",
           cwd: process.cwd(),
@@ -97,7 +97,7 @@ test(
       const requestJson = JSON.parse(
         await fs.readFile(path.join(runOutput.run_dir, "request.json"), "utf8"),
       );
-      assert.equal(requestJson.tool, "delegate.run");
+      assert.equal(requestJson.tool, "delegate_run");
 
       await fs.access(path.join(runOutput.run_dir, "skills_index.json"));
       await fs.access(path.join(runOutput.run_dir, "selected_skills.json"));
@@ -108,7 +108,7 @@ test(
       await fs.access(path.join(runOutput.run_dir, "result.json"));
 
       const resumeResult = await client.callTool({
-        name: "delegate.resume",
+        name: "delegate_resume",
         arguments: {
           thread_id: runOutput.subagent_thread_id,
           task: "Return JSON with summary='ok-resume' and empty arrays for deliverables/open_questions/next_actions.",
@@ -137,7 +137,7 @@ test(
       await fs.rm(resumeOutput.run_dir, { recursive: true, force: true });
 
       const autopilotResult = await client.callTool({
-        name: "delegate.autopilot",
+        name: "delegate_autopilot",
         arguments: {
           task: "This is a cross-cutting request involving tests and README. Do not change files. Return JSON with summary='ok-autopilot' and empty arrays for deliverables/open_questions/next_actions.",
           cwd: process.cwd(),
