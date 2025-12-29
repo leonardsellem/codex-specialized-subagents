@@ -39,7 +39,7 @@ codex mcp add codex-specialized-subagents -- node "$(pwd)/dist/cli.js"
 Verify:
 
 ```bash
-codex mcp list
+codex mcp get codex-specialized-subagents
 ```
 
 ## Workflow
