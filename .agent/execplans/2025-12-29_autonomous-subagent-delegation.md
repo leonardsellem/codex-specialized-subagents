@@ -29,6 +29,7 @@ We cannot *force* Codex to call tools, but we can make tool usage natural and re
 
 - [x] (2025-12-29 21:05 CET) Land plan in-repo (baseline for implementation). (`47dc4ff`)
 - [ ] (2025-12-29 21:05 CET) Implement `delegate.autopilot` and global skill-driven calling behavior.
+- [x] (2025-12-29 21:08 CET) Task 1: Add autopilot schemas + tests. (`0a23795`)
 
 ## Surprises & Discoveries
 
