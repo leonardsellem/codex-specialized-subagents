@@ -2,7 +2,7 @@
 
 MCP server that lets Codex delegate to isolated codex exec sub-agents, selecting repo+global skills automatically.
 
-Status: scaffold + ExecPlan exists; delegation tools not implemented yet. See `.agent/execplans/2025-12-29_codex-specialized-subagents-mcp-server.md`.
+Status: MCP server + `delegate.*` tool stubs implemented; Codex `codex exec` integration is next. See `.agent/execplans/2025-12-29_codex-specialized-subagents-mcp-server.md`.
 
 ## Quickstart
 
@@ -18,13 +18,19 @@ npm install
 npm run build
 ```
 
-3) (Optional) Run the MCP server locally (stdio):
+3) Run tests:
+
+```bash
+npm test
+```
+
+4) (Optional) Run the MCP server locally (stdio):
 
 ```bash
 npm run dev
 ```
 
-4) Register with Codex (global):
+5) Register with Codex (global):
 
 ```bash
 codex mcp add codex-specialized-subagents -- node "$(pwd)/dist/cli.js"
@@ -54,6 +60,13 @@ codex mcp list
 - Artifact-first:
   - full sub-agent event stream + outputs saved to a run directory
   - MCP tool returns only a small structured summary + artifact paths
+
+## What works today (stubbed)
+
+- Tools are registered and callable:
+  - `delegate.run` creates a run directory and writes `request.json`
+  - `delegate.resume` creates a run directory and writes `request.json`
+- Run directories are created under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`.
 
 ## Project structure
 
