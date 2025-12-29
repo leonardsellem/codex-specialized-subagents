@@ -33,7 +33,7 @@ After this change:
 - [x] (2025-12-29 23:43) Add unit tests (TDD) for env mapping + `runCodexExec({ configOverrides })` wiring.
 - [x] (2025-12-29 23:44) Update docs (`docs/reference/tools.md`, `docs/usage.md`, `README.md`).
 - [x] (2025-12-29 23:44) Verify `npm test` (see **Artifacts and Notes**).
-- [ ] (2025-12-29 23:44) Verify `npm run lint`, `npm run build` (optionally `RUN_CODEX_INTEGRATION_TESTS=1 npm test`).
+- [x] (2025-12-29 23:45) Verify `npm run lint`, `npm run build` (optionally `RUN_CODEX_INTEGRATION_TESTS=1 npm test`).
 
 ## Surprises & Discoveries
 
@@ -70,7 +70,12 @@ After this change:
 
 ## Outcomes & Retrospective
 
-(fill in after milestone completion)
+- Shipped per-job `thinking_level` (`low | medium | high`) on `delegate_autopilot` planned jobs (routing is deterministic by job id + task text heuristics).
+- Added optional per-job model overrides via env (`CODEX_AUTOPILOT_MODEL_LOW|MEDIUM|HIGH`), persisted into `autopilot_plan.json` and `subruns/<job_id>/request.json`, and passed to `codex exec` via `runCodexExec({ configOverrides })`.
+- Updated docs to reflect new fields + configuration.
+
+What didn’t (yet):
+- We did not run `RUN_CODEX_INTEGRATION_TESTS=1 npm test` in this implementation pass (optional).
 
 ## Context and Orientation
 
@@ -386,6 +391,10 @@ Local CLI evidence (2025-12-29):
 
 Local test evidence (2025-12-29):
 - `npm test`: 18 pass, 1 skipped
+
+Local lint/build evidence (2025-12-29):
+- `npm run lint`: PASS (`tsc -p tsconfig.json --noEmit`)
+- `npm run build`: PASS (`tsc -p tsconfig.json`)
 
 ## Interfaces and Dependencies
 
