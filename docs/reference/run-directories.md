@@ -3,7 +3,7 @@
 Every tool call writes an artifact directory under:
 
 ```bash
-${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/
+${CODEX_HOME:-$HOME/.codex}/delegator/runs/<run_id>/
 ```
 
 These directories can contain sensitive prompts/output; treat them like logs.
@@ -55,4 +55,3 @@ The parent run directory contains routing artifacts plus `subruns/` for each job
 - Start with `stderr.log` and `result.json` to see why `codex exec` failed.
 - `events.jsonl` is the full event stream.
 - `last_message.json` is the final structured output (must match the schema in `reference/tools.md`).
-

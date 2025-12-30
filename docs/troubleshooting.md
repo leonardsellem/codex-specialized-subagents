@@ -4,11 +4,11 @@
 
 Symptom: Codex reports something like `timed out awaiting tools/call after 60s`.
 
-Fix: increase the MCP tool timeout for this server in `${CODEX_HOME:-~/.codex}/config.toml`:
+Fix: increase the MCP tool timeout for this server in `$HOME/.codex/config.toml`:
 
 ```toml
 [mcp_servers.codex-specialized-subagents]
-tool_timeout_sec = 600
+tool_timeout_sec = 1200
 ```
 
 ## `codex` not found / `ENOENT`
@@ -49,7 +49,6 @@ If integration tests fail, ensure you are logged in with Codex (`codex login`) a
 
 ## Cleaning up run directories
 
-Run directories can grow large over time. They live under `${CODEX_HOME:-~/.codex}/delegator/runs/`.
+Run directories can grow large over time. They live under `${CODEX_HOME:-$HOME/.codex}/delegator/runs/`.
 
 If you want to delete old runs, delete specific run IDs rather than the whole directory.
-

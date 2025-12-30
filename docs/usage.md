@@ -78,7 +78,7 @@ Note: `cwd` should typically be an absolute path. `delegate_autopilot` defaults 
 
 Delegated sub-agents can load skills from:
 - the nearest ancestor `.codex/skills` directory relative to the delegated `cwd`
-- `${CODEX_HOME:-~/.codex}/skills`
+- `${CODEX_HOME:-$HOME/.codex}/skills`
 
 In `skills_mode=auto`, the server selects up to `max_skills` skills based on the task text. Use `skills_mode=explicit` to request specific skills by name, or `skills_mode=none` to disable skills entirely.
 
@@ -134,7 +134,7 @@ Some environments may apply managed configuration that can override CLI `-c` set
 Every tool call returns a `run_dir` and writes artifacts under:
 
 ```bash
-${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/
+${CODEX_HOME:-$HOME/.codex}/delegator/runs/<run_id>/
 ```
 
 See `reference/run-directories.md` for the full layout and debugging tips.

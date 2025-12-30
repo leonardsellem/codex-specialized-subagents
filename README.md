@@ -7,7 +7,7 @@ This repo provides a local (stdio) MCP server that exposes:
 - `delegate_run` — run a single specialist sub-agent via `codex exec`
 - `delegate_resume` — resume a prior sub-agent thread via `codex exec resume`
 
-Each tool call writes a run directory under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/` containing the prompt, selected skills, event stream, and structured results (artifact-first debugging).
+Each tool call writes a run directory under `${CODEX_HOME:-$HOME/.codex}/delegator/runs/<run_id>/` containing the prompt, selected skills, event stream, and structured results (artifact-first debugging).
 
 ## When to use
 
@@ -25,30 +25,38 @@ Optional:
 
 ## Install & quickstart (from source)
 
-From the repo root:
+From the repo root (installs deps + builds `dist/`):
 
 ```bash
 npm install
 npm run build
 ```
 
-### Increase MCP tool timeout (recommended)
+### Configure Codex (recommended, prevents timeouts)
 
-Delegated runs can take minutes. Configure a longer tool timeout for this server in `${CODEX_HOME:-~/.codex}/config.toml`:
-
-```toml
-[mcp_servers.codex-specialized-subagents]
-tool_timeout_sec = 600
-```
-
-If you see `timed out awaiting tools/call after 60s`, increase `tool_timeout_sec`.
-
-### Register with Codex
-
-From the repo root:
+Delegated runs can take minutes. Set this server’s MCP tool timeout to 1200 seconds (20 minutes) in your Codex config (`$HOME/.codex/config.toml`):
 
 ```bash
-codex mcp add codex-specialized-subagents -- node "$(pwd)/dist/cli.js"
+mkdir -p "$HOME/.codex"
+cat >> "$HOME/.codex/config.toml" <<'EOF'
+
+[mcp_servers.codex-specialized-subagents]
+tool_timeout_sec = 1200
+EOF
+```
+
+If you already have a `[mcp_servers.codex-specialized-subagents]` section, edit the existing `tool_timeout_sec` instead of appending a duplicate.
+
+### Register with Codex (recommended defaults)
+
+From the repo root (includes per-job reasoning-effort overrides for `delegate_autopilot`):
+
+```bash
+codex mcp add codex-specialized-subagents \
+  --env CODEX_AUTOPILOT_REASONING_EFFORT_LOW=low \
+  --env CODEX_AUTOPILOT_REASONING_EFFORT_MEDIUM=medium \
+  --env CODEX_AUTOPILOT_REASONING_EFFORT_HIGH=high \
+  -- node "$(pwd)/dist/cli.js"
 ```
 
 Verify:
@@ -94,17 +102,17 @@ If you prefer explicit tool usage, tell Codex to call one of:
 
 Sub-agent runs can load Codex skills from:
 - repo-local `.codex/skills` (nearest ancestor of the delegated `cwd`)
-- global `${CODEX_HOME:-~/.codex}/skills`
+- global `${CODEX_HOME:-$HOME/.codex}/skills`
 
 Note: this repo’s `delegation-autopilot` skill is marked `delegator_exclude: true` (parent-only) to prevent delegation recursion.
 
 ## Artifacts (run directories)
 
-Each tool call writes a run directory under `${CODEX_HOME:-~/.codex}/delegator/runs/<run_id>/`.
+Each tool call writes a run directory under `${CODEX_HOME:-$HOME/.codex}/delegator/runs/<run_id>/`.
 
 ## Documentation
 
-- `docs/README.md` — documentation index
+Start with `docs/README.md` (index), then:
 - `docs/usage.md` — how to use the tools effectively
 - `docs/troubleshooting.md` — common failure modes (timeouts, missing `codex`, etc.)
 - `docs/development.md` — local development and test matrix
@@ -130,7 +138,7 @@ Contributing: `CONTRIBUTING.md`.
 ## Security
 
 - Don’t commit secrets (`.env` is gitignored; use `.env.example` as a template).
-- Run directories can contain sensitive prompts/output; treat `${CODEX_HOME:-~/.codex}/delegator/runs` as sensitive.
+- Run directories can contain sensitive prompts/output; treat `${CODEX_HOME:-$HOME/.codex}/delegator/runs` as sensitive.
 
 Reporting: `SECURITY.md`.
 
