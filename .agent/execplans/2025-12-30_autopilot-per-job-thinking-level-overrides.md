@@ -56,7 +56,7 @@ Compatibility goal:
 - [x] (2025-12-30 10:54) Implement RCA remediation #2 (code + unit tests): server-side default reasoning effort for `delegate_run` / `delegate_resume` via `CODEX_DELEGATE_REASONING_EFFORT`.
 - [x] (2025-12-30 10:57) Implement RCA remediation #2 (docs): document `CODEX_DELEGATE_REASONING_EFFORT` in `README.md` + `docs/usage.md` + `docs/reference/tools.md` (+ troubleshooting as needed).
 - [ ] (2025-12-30 10:54) Verify (post-change): `npm test`, `npm run lint`, `npm run build`.
-- [ ] (2025-12-30 10:50) Implement RCA remediation #3: tighten parent-agent (`delegation-autopilot`) guidance re: when to use `delegate_autopilot` vs `delegate_run`.
+- [x] (2025-12-30 10:59) Implement RCA remediation #3: tighten parent-agent (`delegation-autopilot`) guidance re: when to use `delegate_autopilot` vs `delegate_run`.
 
 ## Surprises & Discoveries
 
