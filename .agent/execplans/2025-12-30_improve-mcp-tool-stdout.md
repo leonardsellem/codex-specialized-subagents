@@ -24,11 +24,11 @@ Minimum scope (explicitly requested):
 
 - [x] (2025-12-30 07:01) Create ExecPlan stub + capture prior subagent run notes.
 - [x] (2025-12-30 07:13) Ground plan via MCP spec/SDK research + repo scan; write artifacts under `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/`.
-- [ ] (2025-12-30 07:05) Define stdout format spec (tool-by-tool) + truncation rules.
-- [ ] (2025-12-30 07:05) Implement formatter helper(s) and wire into `src/server.ts`.
-- [ ] (2025-12-30 07:05) Add unit tests for formatter output.
-- [ ] (2025-12-30 07:05) Update docs (`docs/reference/tools.md`) with example outputs.
-- [ ] (2025-12-30 07:05) Validate (`npm test`, `npm run lint`, `npm run build`) + manual MCP smoke.
+- [x] (2025-12-30 07:05) Define stdout format spec (tool-by-tool) + truncation rules.
+- [x] (2025-12-30 07:05) Implement formatter helper(s) and wire into `src/server.ts`.
+- [x] (2025-12-30 07:05) Add unit tests for formatter output.
+- [x] (2025-12-30 07:05) Update docs (`docs/reference/tools.md`) with example outputs.
+- [x] (2025-12-30 07:05) Validate (`npm test`, `npm run lint`, `npm run build`) + manual MCP smoke.
 
 ## Surprises & Discoveries
 
@@ -43,6 +43,15 @@ Minimum scope (explicitly requested):
 
 - Observation: MCP guidance expects `content` and `structuredContent` to be semantically equivalent; the spec also recommends including a serialized JSON representation in `content` for backwards compatibility.
   Evidence: `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/external_research.md`.
+
+- Observation: Plan references `repo_scan.md` / `external_research.md` under `.agent/execplans/artifacts/...`, but those files are gitignored and were not present in this worktree.
+  Evidence: `ls -R .agent/execplans` shows no `artifacts/`; `.gitignore` ignores `.agent/execplans/artifacts/`.
+
+- Observation: Passing `truncateInline` directly to `Array.map(...)` treated the callback index as `maxChars`, causing unintended truncation (e.g., `Run npm test` → `Run npm tes…`).
+  Evidence: Sample formatter output generated via `node --import tsx -e ...`; fixed by wrapping (`map((s) => truncateInline(s))`) and covered by unit tests.
+
+- Observation: Typecheck initially failed when `structuredContent` stubs in `src/server.ts` used `as const`, making arrays `readonly` and widening `status` to `string` in some code paths.
+  Evidence: `npm run lint` (tsc) errors about readonly arrays and `status` incompatibility; resolved by removing `as const` on the full object and using a `DelegateToolOutput` type alias to context-type `structuredContent`.
 
 ## Decision Log
 
@@ -62,9 +71,22 @@ Minimum scope (explicitly requested):
   Rationale: The artifact-first design already preserves full details on disk and in `structuredContent`; full JSON in `content` is often too verbose for interactive chat UIs. (If backwards-compat JSON-in-text becomes necessary, we can add an opt-in debug flag or a truncated JSON appendix later.)
   Date/Author: 2025-12-30 / agent
 
+- Decision: Format tool `content` in both success and failure code paths (skill selection errors, run crashes, etc.).
+  Rationale: Keep stdout consistent and always show `run_dir` + debug pointers even when `codex exec` never started.
+  Date/Author: 2025-12-30 / agent
+
 ## Outcomes & Retrospective
 
-To fill at completion.
+Shipped:
+- `delegate_run` / `delegate_resume` stdout now includes status + duration, run_dir, thread id, summary, truncated lists, and debug pointers (always `last_message.json`, plus `stderr.log`/`result.json` on failure/cancelled).
+- `delegate_autopilot` stdout now includes decision, **Autopilot plan**, per-subrun summaries + `last_message.json` pointers, and aggregate summary/lists.
+- Added unit tests locking formatting and truncation behavior; updated docs with example `content` blocks.
+
+Verification (2025-12-30):
+- `npm test` (22 pass, 1 skip)
+- `npm run lint` (tsc --noEmit) passed
+- `npm run build` passed
+- Manual smoke: started `npm run dev` (stdio server) without immediate crash (see `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/manual_mcp_smoke.log`).
 
 ## Context and Orientation
 
