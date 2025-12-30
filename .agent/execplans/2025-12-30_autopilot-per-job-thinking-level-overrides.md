@@ -49,6 +49,8 @@ Compatibility goal:
 - [x] (2025-12-30 08:14) Archive ExecPlan + artifacts to `.agent/execplans/archive/`.
 - [x] (2025-12-30 10:08) RCA addendum: investigate “reasoning effort overrides not applied” reports from recent delegated runs; capture root cause + remediation plan.
 - [x] (2025-12-30 10:26) Grounding refresh: update `external_research.md` + `repo_scan.md` with post-ship state and confirm archive paths are correct.
+- [ ] (2025-12-30 10:49) Re-verify on current HEAD: `npm test`, `npm run lint`, `npm run build` (fresh evidence for this execution pass).
+- [ ] (2025-12-30 10:49) Re-archive this ExecPlan + artifacts to `.agent/execplans/archive/` (restore “shipped” invariants and align artifact paths).
 
 ## Surprises & Discoveries
 
@@ -81,6 +83,10 @@ Compatibility goal:
   - `delegate_autopilot`: `<run_dir>/autopilot_plan.json`, `<run_dir>/subruns/<job_id>/request.json`, and each subrun’s `<run_dir>/subruns/<job_id>/codex_exec.json`
   - `delegate_run`/`delegate_resume`: `<run_dir>/codex_exec.json`
 
+- Observation (2025-12-30): This ExecPlan is marked shipped and references archive artifact paths, but currently lives under `.agent/execplans/` and its artifacts live under `.agent/execplans/artifacts/`.
+  Implication: restore the “completed plans live in archive/” invariant by re-archiving the plan and artifacts via `scripts/archive_execplan.py`.
+  Evidence: `ls -1 .agent/execplans` and `ls -1 .agent/execplans/artifacts`.
+
 ## Decision Log
 
 - Decision: Introduce env vars `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` and map them to per-job `-c model_reasoning_effort="..."` overrides.
@@ -101,6 +107,10 @@ Compatibility goal:
 
 - Decision: Add a remediation plan to address “expectation mismatch” between `delegate_autopilot` (env-mapped per-job overrides) vs `delegate_run` (explicit overrides only), and improve observability so failures are diagnosable from artifacts alone.
   Rationale: Recent failures were due to tool selection (bypassing autopilot), not a bug in the autopilot plan builder.
+  Date/Author: 2025-12-30 / agent
+
+- Decision (2025-12-30): Keep this shipped ExecPlan archived (not active) and keep any remaining follow-ups in a separate ExecPlan if/when we decide to pursue them.
+  Rationale: Keeps “active” plans actionable and prevents stale shipped plans from drifting out of sync with their referenced artifact paths.
   Date/Author: 2025-12-30 / agent
 
 ## Outcomes & Retrospective
