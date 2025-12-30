@@ -39,7 +39,7 @@ Compatibility goal:
 - [x] (2025-12-30 08:07) Update unit tests for new env vars/overrides.
 - [x] (2025-12-30 08:09) Update docs (`docs/usage.md`, `README.md`, `docs/reference/tools.md`).
 - [x] (2025-12-30 08:07) Verify: `npm test`.
-- [ ] (2025-12-30 07:18) Verify: `npm run lint`.
+- [x] (2025-12-30 08:09) Verify: `npm run lint`.
 - [ ] (2025-12-30 07:18) Verify: `npm run build`.
 
 ## Surprises & Discoveries
@@ -263,6 +263,7 @@ Recovery:
 - External research summary: `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
 - Repo scan grounding notes: `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
 - (2025-12-30 08:07) Local verification: `npm test` (23 pass, 1 skipped).
+- (2025-12-30 08:09) Local verification: `npm run lint`.
 
 ## Interfaces and Dependencies
 
