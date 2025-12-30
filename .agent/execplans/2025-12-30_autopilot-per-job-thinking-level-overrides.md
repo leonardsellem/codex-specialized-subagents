@@ -40,7 +40,7 @@ Compatibility goal:
 - [x] (2025-12-30 08:09) Update docs (`docs/usage.md`, `README.md`, `docs/reference/tools.md`).
 - [x] (2025-12-30 08:07) Verify: `npm test`.
 - [x] (2025-12-30 08:09) Verify: `npm run lint`.
-- [ ] (2025-12-30 07:18) Verify: `npm run build`.
+- [x] (2025-12-30 08:10) Verify: `npm run build`.
 
 ## Surprises & Discoveries
 
@@ -264,6 +264,7 @@ Recovery:
 - Repo scan grounding notes: `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
 - (2025-12-30 08:07) Local verification: `npm test` (23 pass, 1 skipped).
 - (2025-12-30 08:09) Local verification: `npm run lint`.
+- (2025-12-30 08:10) Local verification: `npm run build`.
 
 ## Interfaces and Dependencies
 
