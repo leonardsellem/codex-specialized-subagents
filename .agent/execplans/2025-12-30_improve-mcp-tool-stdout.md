@@ -24,7 +24,7 @@ Minimum scope (explicitly requested):
 
 - [x] (2025-12-30 07:01) Create ExecPlan stub + capture prior subagent run notes.
 - [x] (2025-12-30 07:13) Ground plan via MCP spec/SDK research + repo scan; write artifacts under `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/`.
-- [ ] (2025-12-30 07:05) Define stdout format spec (tool-by-tool) + truncation rules.
+- [x] (2025-12-30 07:05) Define stdout format spec (tool-by-tool) + truncation rules.
 - [ ] (2025-12-30 07:05) Implement formatter helper(s) and wire into `src/server.ts`.
 - [ ] (2025-12-30 07:05) Add unit tests for formatter output.
 - [ ] (2025-12-30 07:05) Update docs (`docs/reference/tools.md`) with example outputs.
@@ -43,6 +43,9 @@ Minimum scope (explicitly requested):
 
 - Observation: MCP guidance expects `content` and `structuredContent` to be semantically equivalent; the spec also recommends including a serialized JSON representation in `content` for backwards compatibility.
   Evidence: `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/external_research.md`.
+
+- Observation: Plan references `repo_scan.md` / `external_research.md` under `.agent/execplans/artifacts/...`, but those files are gitignored and were not present in this worktree.
+  Evidence: `ls -R .agent/execplans` shows no `artifacts/`; `.gitignore` ignores `.agent/execplans/artifacts/`.
 
 ## Decision Log
 
