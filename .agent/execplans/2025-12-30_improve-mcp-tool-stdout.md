@@ -25,7 +25,7 @@ Minimum scope (explicitly requested):
 - [x] (2025-12-30 07:01) Create ExecPlan stub + capture prior subagent run notes.
 - [x] (2025-12-30 07:13) Ground plan via MCP spec/SDK research + repo scan; write artifacts under `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/`.
 - [x] (2025-12-30 07:05) Define stdout format spec (tool-by-tool) + truncation rules.
-- [ ] (2025-12-30 07:05) Implement formatter helper(s) and wire into `src/server.ts`.
+- [x] (2025-12-30 07:05) Implement formatter helper(s) and wire into `src/server.ts`.
 - [ ] (2025-12-30 07:05) Add unit tests for formatter output.
 - [ ] (2025-12-30 07:05) Update docs (`docs/reference/tools.md`) with example outputs.
 - [ ] (2025-12-30 07:05) Validate (`npm test`, `npm run lint`, `npm run build`) + manual MCP smoke.
@@ -63,6 +63,10 @@ Minimum scope (explicitly requested):
 
 - Decision: In v1, do **not** embed full `structuredContent` JSON in `content`; instead, make `content` semantically equivalent via a compact, deterministic text summary plus artifact pointers.
   Rationale: The artifact-first design already preserves full details on disk and in `structuredContent`; full JSON in `content` is often too verbose for interactive chat UIs. (If backwards-compat JSON-in-text becomes necessary, we can add an opt-in debug flag or a truncated JSON appendix later.)
+  Date/Author: 2025-12-30 / agent
+
+- Decision: Format tool `content` in both success and failure code paths (skill selection errors, run crashes, etc.).
+  Rationale: Keep stdout consistent and always show `run_dir` + debug pointers even when `codex exec` never started.
   Date/Author: 2025-12-30 / agent
 
 ## Outcomes & Retrospective

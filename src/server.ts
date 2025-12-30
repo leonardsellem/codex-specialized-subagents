@@ -9,6 +9,7 @@ import { runCodexExec, runCodexExecResume } from "./lib/codex/runCodexExec.js";
 import { SubagentOutputSchema } from "./lib/codex/subagentOutput.js";
 import { runAutopilot } from "./lib/delegation/autopilot.js";
 import { AutopilotInputSchema, AutopilotToolOutputSchema } from "./lib/delegation/types.js";
+import { formatAutopilotToolContent, formatDelegateToolContent } from "./lib/mcp/formatToolContent.js";
 import { discoverSkills } from "./lib/skills/discover.js";
 import { selectSkills } from "./lib/skills/select.js";
 
@@ -95,7 +96,7 @@ export async function startServer(): Promise<void> {
           content: [
             {
               type: "text",
-              text: `Run directory: ${output.run_dir}`,
+              text: formatAutopilotToolContent(output),
             },
           ],
           structuredContent: output,
@@ -103,34 +104,37 @@ export async function startServer(): Promise<void> {
       } catch (err) {
         const finishedAt = new Date();
         const message = err instanceof Error ? err.message : String(err);
+
+        const structuredContent = {
+          run_id: "unknown",
+          run_dir: "unknown",
+          decision: { should_delegate: false, reason: "Autopilot failed." },
+          plan: { jobs: [] },
+          jobs: [],
+          aggregate: {
+            summary: "Autopilot failed.",
+            deliverables: [],
+            open_questions: [],
+            next_actions: [],
+          },
+          artifacts: [],
+          timing: {
+            started_at: startedAt.toISOString(),
+            finished_at: finishedAt.toISOString(),
+            duration_ms: finishedAt.getTime() - startedAt.getTime(),
+          },
+          status: "failed",
+          error: message,
+        } as const;
+
         return {
           content: [
             {
               type: "text",
-              text: `delegate_autopilot failed: ${message}`,
+              text: formatAutopilotToolContent(structuredContent),
             },
           ],
-          structuredContent: {
-            run_id: "unknown",
-            run_dir: "unknown",
-            decision: { should_delegate: false, reason: "Autopilot failed." },
-            plan: { jobs: [] },
-            jobs: [],
-            aggregate: {
-              summary: "Autopilot failed.",
-              deliverables: [],
-              open_questions: [],
-              next_actions: [],
-            },
-            artifacts: [],
-            timing: {
-              started_at: startedAt.toISOString(),
-              finished_at: finishedAt.toISOString(),
-              duration_ms: finishedAt.getTime() - startedAt.getTime(),
-            },
-            status: "failed",
-            error: message,
-          },
+          structuredContent,
         };
       }
     },
@@ -185,35 +189,38 @@ export async function startServer(): Promise<void> {
 
         if (selection.errors.length > 0) {
           const finishedAt = new Date();
+
+          const structuredContent = {
+            run_id: runId,
+            run_dir: runDir,
+            subagent_thread_id: null,
+            selected_skills: selection.selected,
+            summary: "Failed to select skills; codex exec was not started.",
+            deliverables: [],
+            open_questions: [...selection.warnings],
+            next_actions: ["Fix skill selection errors (skills_mode/skills names) and retry"],
+            artifacts: [
+              { name: "request.json", path: requestPath },
+              { name: "skills_index.json", path: skillsIndexPath },
+              { name: "selected_skills.json", path: selectedSkillsPath },
+            ],
+            timing: {
+              started_at: startedAt.toISOString(),
+              finished_at: finishedAt.toISOString(),
+              duration_ms: finishedAt.getTime() - startedAt.getTime(),
+            },
+            status: "failed",
+            error: selection.errors.join("; "),
+          } as const;
+
           return {
             content: [
               {
                 type: "text",
-                text: `Failed to select skills: ${selection.errors.join("; ")}`,
+                text: formatDelegateToolContent("delegate_run", structuredContent),
               },
             ],
-            structuredContent: {
-              run_id: runId,
-              run_dir: runDir,
-              subagent_thread_id: null,
-              selected_skills: selection.selected,
-              summary: "Failed to select skills; codex exec was not started.",
-              deliverables: [],
-              open_questions: [...selection.warnings],
-              next_actions: ["Fix skill selection errors (skills_mode/skills names) and retry"],
-              artifacts: [
-                { name: "request.json", path: requestPath },
-                { name: "skills_index.json", path: skillsIndexPath },
-                { name: "selected_skills.json", path: selectedSkillsPath },
-              ],
-              timing: {
-                started_at: startedAt.toISOString(),
-                finished_at: finishedAt.toISOString(),
-                duration_ms: finishedAt.getTime() - startedAt.getTime(),
-              },
-              status: "failed",
-              error: selection.errors.join("; "),
-            },
+            structuredContent,
           };
         }
 
@@ -306,73 +313,78 @@ export async function startServer(): Promise<void> {
           ? ["Inspect run_dir artifacts", ...parsedSubagentOutput.next_actions]
           : ["Inspect run_dir artifacts"];
 
+        const structuredContent = {
+          run_id: runId,
+          run_dir: runDir,
+          subagent_thread_id: codexResult.thread_id,
+          selected_skills: selection.selected,
+          summary: parsedSubagentOutput?.summary ?? "Delegated run finished.",
+          deliverables: parsedSubagentOutput?.deliverables ?? [],
+          open_questions: openQuestions,
+          next_actions: nextActions,
+          artifacts: [
+            { name: "request.json", path: requestPath },
+            { name: "skills_index.json", path: skillsIndexPath },
+            { name: "selected_skills.json", path: selectedSkillsPath },
+            { name: "subagent_prompt.txt", path: subagentPromptPath },
+            { name: "events.jsonl", path: codexResult.artifacts.events_path },
+            { name: "stderr.log", path: codexResult.artifacts.stderr_path },
+            { name: "last_message.json", path: codexResult.artifacts.last_message_path },
+            { name: "thread.json", path: codexResult.artifacts.thread_path },
+            { name: "result.json", path: codexResult.artifacts.result_path },
+            {
+              name: "subagent_output.schema.json",
+              path: codexResult.artifacts.subagent_output_schema_path,
+            },
+          ],
+          timing: {
+            started_at: startedAt.toISOString(),
+            finished_at: finishedAt.toISOString(),
+            duration_ms: finishedAt.getTime() - startedAt.getTime(),
+          },
+          status,
+          error,
+        } as const;
+
         return {
           content: [
             {
               type: "text",
-              text: `Run directory: ${runDir}`,
+              text: formatDelegateToolContent("delegate_run", structuredContent),
             },
           ],
-          structuredContent: {
-            run_id: runId,
-            run_dir: runDir,
-            subagent_thread_id: codexResult.thread_id,
-            selected_skills: selection.selected,
-            summary: parsedSubagentOutput?.summary ?? "Delegated run finished.",
-            deliverables: parsedSubagentOutput?.deliverables ?? [],
-            open_questions: openQuestions,
-            next_actions: nextActions,
-            artifacts: [
-              { name: "request.json", path: requestPath },
-              { name: "skills_index.json", path: skillsIndexPath },
-              { name: "selected_skills.json", path: selectedSkillsPath },
-              { name: "subagent_prompt.txt", path: subagentPromptPath },
-              { name: "events.jsonl", path: codexResult.artifacts.events_path },
-              { name: "stderr.log", path: codexResult.artifacts.stderr_path },
-              { name: "last_message.json", path: codexResult.artifacts.last_message_path },
-              { name: "thread.json", path: codexResult.artifacts.thread_path },
-              { name: "result.json", path: codexResult.artifacts.result_path },
-              {
-                name: "subagent_output.schema.json",
-                path: codexResult.artifacts.subagent_output_schema_path,
-              },
-            ],
-            timing: {
-              started_at: startedAt.toISOString(),
-              finished_at: finishedAt.toISOString(),
-              duration_ms: finishedAt.getTime() - startedAt.getTime(),
-            },
-            status,
-            error,
-          },
+          structuredContent,
         };
       } catch (err) {
         const finishedAt = new Date();
+
+        const structuredContent = {
+          run_id: "unknown",
+          run_dir: "unknown",
+          subagent_thread_id: null,
+          selected_skills: [],
+          summary: "Failed to create run directory (stub).",
+          deliverables: [],
+          open_questions: [],
+          next_actions: [],
+          artifacts: [],
+          timing: {
+            started_at: startedAt.toISOString(),
+            finished_at: finishedAt.toISOString(),
+            duration_ms: finishedAt.getTime() - startedAt.getTime(),
+          },
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        } as const;
+
         return {
           content: [
             {
               type: "text",
-              text: `Failed to create run directory: ${err instanceof Error ? err.message : String(err)}`,
+              text: formatDelegateToolContent("delegate_run", structuredContent),
             },
           ],
-          structuredContent: {
-            run_id: "unknown",
-            run_dir: "unknown",
-            subagent_thread_id: null,
-            selected_skills: [],
-            summary: "Failed to create run directory (stub).",
-            deliverables: [],
-            open_questions: [],
-            next_actions: [],
-            artifacts: [],
-            timing: {
-              started_at: startedAt.toISOString(),
-              finished_at: finishedAt.toISOString(),
-              duration_ms: finishedAt.getTime() - startedAt.getTime(),
-            },
-            status: "failed",
-            error: err instanceof Error ? err.message : String(err),
-          },
+          structuredContent,
         };
       }
     },
@@ -438,35 +450,38 @@ export async function startServer(): Promise<void> {
 
         if (selection.errors.length > 0) {
           const finishedAt = new Date();
+
+          const structuredContent = {
+            run_id: runId,
+            run_dir: runDir,
+            subagent_thread_id: args.thread_id,
+            selected_skills: selection.selected,
+            summary: "Failed to select skills; codex exec resume was not started.",
+            deliverables: [],
+            open_questions: [...selectionWarnings],
+            next_actions: ["Fix skill selection errors (skills_mode/skills names) and retry"],
+            artifacts: [
+              { name: "request.json", path: requestPath },
+              { name: "skills_index.json", path: skillsIndexPath },
+              { name: "selected_skills.json", path: selectedSkillsPath },
+            ],
+            timing: {
+              started_at: startedAt.toISOString(),
+              finished_at: finishedAt.toISOString(),
+              duration_ms: finishedAt.getTime() - startedAt.getTime(),
+            },
+            status: "failed",
+            error: selection.errors.join("; "),
+          } as const;
+
           return {
             content: [
               {
                 type: "text",
-                text: `Failed to select skills: ${selection.errors.join("; ")}`,
+                text: formatDelegateToolContent("delegate_resume", structuredContent),
               },
             ],
-            structuredContent: {
-              run_id: runId,
-              run_dir: runDir,
-              subagent_thread_id: args.thread_id,
-              selected_skills: selection.selected,
-              summary: "Failed to select skills; codex exec resume was not started.",
-              deliverables: [],
-              open_questions: [...selectionWarnings],
-              next_actions: ["Fix skill selection errors (skills_mode/skills names) and retry"],
-              artifacts: [
-                { name: "request.json", path: requestPath },
-                { name: "skills_index.json", path: skillsIndexPath },
-                { name: "selected_skills.json", path: selectedSkillsPath },
-              ],
-              timing: {
-                started_at: startedAt.toISOString(),
-                finished_at: finishedAt.toISOString(),
-                duration_ms: finishedAt.getTime() - startedAt.getTime(),
-              },
-              status: "failed",
-              error: selection.errors.join("; "),
-            },
+            structuredContent,
           };
         }
 
@@ -558,77 +573,82 @@ export async function startServer(): Promise<void> {
                   ? null
                   : "codex exec resume did not produce a valid last_message.json";
 
+        const structuredContent = {
+          run_id: runId,
+          run_dir: runDir,
+          subagent_thread_id: codexResult.thread_id ?? args.thread_id,
+          selected_skills: selection.selected,
+          summary: parsedSubagentOutput?.summary ?? "Delegated resume finished.",
+          deliverables: parsedSubagentOutput?.deliverables ?? [],
+          open_questions: parsedSubagentOutput
+            ? [...parsedSubagentOutput.open_questions, ...selectionWarnings]
+            : [...selectionWarnings],
+          next_actions: parsedSubagentOutput
+            ? ["Inspect run_dir artifacts", ...parsedSubagentOutput.next_actions]
+            : ["Inspect run_dir artifacts"],
+          artifacts: [
+            { name: "request.json", path: requestPath },
+            { name: "skills_index.json", path: skillsIndexPath },
+            { name: "selected_skills.json", path: selectedSkillsPath },
+            { name: "subagent_prompt.txt", path: subagentPromptPath },
+            { name: "events.jsonl", path: codexResult.artifacts.events_path },
+            { name: "stderr.log", path: codexResult.artifacts.stderr_path },
+            { name: "last_message.json", path: codexResult.artifacts.last_message_path },
+            { name: "thread.json", path: codexResult.artifacts.thread_path },
+            { name: "result.json", path: codexResult.artifacts.result_path },
+            {
+              name: "subagent_output.schema.json",
+              path: codexResult.artifacts.subagent_output_schema_path,
+            },
+          ],
+          timing: {
+            started_at: startedAt.toISOString(),
+            finished_at: finishedAt.toISOString(),
+            duration_ms: finishedAt.getTime() - startedAt.getTime(),
+          },
+          status,
+          error,
+        } as const;
+
         return {
           content: [
             {
               type: "text",
-              text: `Run directory: ${runDir}`,
+              text: formatDelegateToolContent("delegate_resume", structuredContent),
             },
           ],
-          structuredContent: {
-            run_id: runId,
-            run_dir: runDir,
-            subagent_thread_id: codexResult.thread_id ?? args.thread_id,
-            selected_skills: selection.selected,
-            summary: parsedSubagentOutput?.summary ?? "Delegated resume finished.",
-            deliverables: parsedSubagentOutput?.deliverables ?? [],
-            open_questions: parsedSubagentOutput
-              ? [...parsedSubagentOutput.open_questions, ...selectionWarnings]
-              : [...selectionWarnings],
-            next_actions: parsedSubagentOutput
-              ? ["Inspect run_dir artifacts", ...parsedSubagentOutput.next_actions]
-              : ["Inspect run_dir artifacts"],
-            artifacts: [
-              { name: "request.json", path: requestPath },
-              { name: "skills_index.json", path: skillsIndexPath },
-              { name: "selected_skills.json", path: selectedSkillsPath },
-              { name: "subagent_prompt.txt", path: subagentPromptPath },
-              { name: "events.jsonl", path: codexResult.artifacts.events_path },
-              { name: "stderr.log", path: codexResult.artifacts.stderr_path },
-              { name: "last_message.json", path: codexResult.artifacts.last_message_path },
-              { name: "thread.json", path: codexResult.artifacts.thread_path },
-              { name: "result.json", path: codexResult.artifacts.result_path },
-              {
-                name: "subagent_output.schema.json",
-                path: codexResult.artifacts.subagent_output_schema_path,
-              },
-            ],
-            timing: {
-              started_at: startedAt.toISOString(),
-              finished_at: finishedAt.toISOString(),
-              duration_ms: finishedAt.getTime() - startedAt.getTime(),
-            },
-            status,
-            error,
-          },
+          structuredContent,
         };
       } catch (err) {
         const finishedAt = new Date();
+
+        const structuredContent = {
+          run_id: "unknown",
+          run_dir: "unknown",
+          subagent_thread_id: null,
+          selected_skills: [],
+          summary: "Failed to create run directory (stub).",
+          deliverables: [],
+          open_questions: [],
+          next_actions: [],
+          artifacts: [],
+          timing: {
+            started_at: startedAt.toISOString(),
+            finished_at: finishedAt.toISOString(),
+            duration_ms: finishedAt.getTime() - startedAt.getTime(),
+          },
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        } as const;
+
         return {
           content: [
             {
               type: "text",
-              text: `Failed to create run directory: ${err instanceof Error ? err.message : String(err)}`,
+              text: formatDelegateToolContent("delegate_resume", structuredContent),
             },
           ],
-          structuredContent: {
-            run_id: "unknown",
-            run_dir: "unknown",
-            subagent_thread_id: null,
-            selected_skills: [],
-            summary: "Failed to create run directory (stub).",
-            deliverables: [],
-            open_questions: [],
-            next_actions: [],
-            artifacts: [],
-            timing: {
-              started_at: startedAt.toISOString(),
-              finished_at: finishedAt.toISOString(),
-              duration_ms: finishedAt.getTime() - startedAt.getTime(),
-            },
-            status: "failed",
-            error: err instanceof Error ? err.message : String(err),
-          },
+          structuredContent,
         };
       }
     },
