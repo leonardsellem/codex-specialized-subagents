@@ -17,6 +17,7 @@ export type RunCodexExecOptions = {
   env?: NodeJS.ProcessEnv;
   abortSignal?: AbortSignal;
   configOverrides?: string[];
+  onEvent?: (event: { type?: string; item_type?: string; item_status?: string }) => void;
 };
 
 export type RunCodexExecResumeOptions = RunCodexExecOptions & {
@@ -198,6 +199,18 @@ async function runCodexExecInternal(options: RunCodexExecOptions & {
 
       try {
         const parsed = JSON.parse(line) as unknown;
+        if (options.onEvent) {
+          const record = parsed as Record<string, unknown>;
+          const type = typeof record.type === "string" ? record.type : undefined;
+          const item = record.item && typeof record.item === "object" ? (record.item as Record<string, unknown>) : null;
+          const item_type = item && typeof item.type === "string" ? item.type : undefined;
+          const item_status = item && typeof item.status === "string" ? item.status : undefined;
+          try {
+            options.onEvent({ type, item_type, item_status });
+          } catch {
+            // ignore
+          }
+        }
         const found = extractThreadId(parsed);
         if (found && !threadId) threadId = found;
       } catch {

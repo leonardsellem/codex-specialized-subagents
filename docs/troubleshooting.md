@@ -69,6 +69,16 @@ Debug checklist:
 - Check `stderr.log` for errors and `result.json` for exit status.
 - Inspect `last_message.json` (if present) and compare it to the required fields in `reference/tools.md`.
 
+## No output until delegation finishes
+
+`delegate_*` tools are normal request/response calls, so the final tool result only appears when the call completes.
+
+While a delegated `codex exec` is running, this server also emits MCP logging notifications (best-effort) so you can see liveness/progress in clients that render server logs.
+
+If you still see nothing until the end:
+- Confirm your client shows MCP logging notifications.
+- Open the run directory and inspect `events.jsonl` / `stderr.log` / `codex_exec.json` while the run is in-flight.
+
 ## Integration tests are skipped or failing
 
 By default, `npm test` skips real Codex integration. To enable integration tests:

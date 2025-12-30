@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 
 import { runCodexExec, type RunCodexExecResult } from "../codex/runCodexExec.js";
 import { SubagentOutputSchema } from "../codex/subagentOutput.js";
+import { createThrottledCodexExecProgressLogger, type LogFn } from "../mcp/progressLogger.js";
 import { createRunDir, writeJsonFile, writeTextFile } from "../runDirs.js";
 import { discoverSkills } from "../skills/discover.js";
 import type { SkillIndex } from "../skills/types.js";
@@ -29,6 +30,7 @@ type RunAutopilotOptions = {
   signal?: AbortSignal;
   env?: NodeJS.ProcessEnv;
   deps?: Partial<AutopilotDeps>;
+  log?: LogFn;
 };
 
 function aggregateJobResults(jobResults: AutopilotJobResult[]): {
@@ -171,6 +173,7 @@ async function runAutopilotJob(options: {
   job: AutopilotJob;
   abortSignal?: AbortSignal;
   deps: AutopilotDeps;
+  log?: LogFn;
 }): Promise<AutopilotJobResult> {
   const startedAt = new Date();
   const jobRunDir = path.join(options.parentRunDir, "subruns", options.job.id);
@@ -237,6 +240,17 @@ async function runAutopilotJob(options: {
 
   await options.deps.writeTextFile(subagentPromptPath, subagentPrompt);
 
+  const progress = options.log
+    ? createThrottledCodexExecProgressLogger({
+        log: options.log,
+        label: `delegate_autopilot/${options.job.id}`,
+        heartbeatMs: 10_000,
+        eventThrottleMs: 1_000,
+      })
+    : null;
+
+  progress?.start();
+
   const codexResult = await options.deps.runCodexExec({
     runDir: jobRunDir,
     cwd: options.cwd,
@@ -246,7 +260,10 @@ async function runAutopilotJob(options: {
     abortSignal: options.abortSignal,
     env: options.env,
     configOverrides: options.job.config_overrides,
+    onEvent: progress ? progress.onEvent : undefined,
   });
+
+  progress?.stop();
 
   const finishedAt = new Date();
 
@@ -392,6 +409,7 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
               abortSignal: options.signal,
               env,
               deps,
+              log: options.log,
             });
           } catch (err) {
             const finishedAt = new Date();

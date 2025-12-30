@@ -11,6 +11,7 @@ import { buildCodexConfigOverrides } from "./lib/codex/configOverrides.js";
 import { runAutopilot } from "./lib/delegation/autopilot.js";
 import { AutopilotInputSchema, AutopilotToolOutputSchema } from "./lib/delegation/types.js";
 import { formatAutopilotToolContent, formatDelegateToolContent } from "./lib/mcp/formatToolContent.js";
+import { createThrottledCodexExecProgressLogger, type LogFn } from "./lib/mcp/progressLogger.js";
 import { discoverSkills } from "./lib/skills/discover.js";
 import { selectSkills } from "./lib/skills/select.js";
 
@@ -83,7 +84,7 @@ export async function startServer(): Promise<void> {
   const server = new McpServer({
     name: "codex-specialized-subagents",
     version: "0.1.0",
-  });
+  }, { capabilities: { logging: {} } });
 
   server.registerTool(
     "delegate_autopilot",
@@ -97,7 +98,15 @@ export async function startServer(): Promise<void> {
     async (args, extra) => {
       const startedAt = new Date();
       try {
-        const output = await runAutopilot(args, { signal: extra.signal });
+        const log: LogFn = async (level, message) => {
+          try {
+            await server.sendLoggingMessage({ level, data: message }, extra.sessionId);
+          } catch {
+            // ignore
+          }
+        };
+
+        const output = await runAutopilot(args, { signal: extra.signal, log });
         return {
           content: [
             {
@@ -261,6 +270,22 @@ export async function startServer(): Promise<void> {
         await writeTextFile(subagentPromptPath, subagentPrompt);
 
         const configOverrides = buildCodexConfigOverrides(args);
+        const log: LogFn = async (level, message) => {
+          try {
+            await server.sendLoggingMessage({ level, data: message }, extra.sessionId);
+          } catch {
+            // ignore
+          }
+        };
+
+        const progress = createThrottledCodexExecProgressLogger({
+          log,
+          label: `delegate_run/${runId}`,
+          heartbeatMs: 10_000,
+          eventThrottleMs: 1_000,
+        });
+
+        progress.start();
 
         const codexResult = await runCodexExec({
           runDir,
@@ -270,7 +295,10 @@ export async function startServer(): Promise<void> {
           prompt: subagentPrompt,
           abortSignal: extra.signal,
           configOverrides,
+          onEvent: progress.onEvent,
         });
+
+        progress.stop();
 
         const finishedAt = new Date();
 
@@ -532,6 +560,22 @@ export async function startServer(): Promise<void> {
         await writeTextFile(subagentPromptPath, subagentPrompt);
 
         const configOverrides = buildCodexConfigOverrides(args);
+        const log: LogFn = async (level, message) => {
+          try {
+            await server.sendLoggingMessage({ level, data: message }, extra.sessionId);
+          } catch {
+            // ignore
+          }
+        };
+
+        const progress = createThrottledCodexExecProgressLogger({
+          log,
+          label: `delegate_resume/${runId}`,
+          heartbeatMs: 10_000,
+          eventThrottleMs: 1_000,
+        });
+
+        progress.start();
 
         const codexResult = await runCodexExecResume({
           runDir,
@@ -542,7 +586,10 @@ export async function startServer(): Promise<void> {
           abortSignal: extra.signal,
           threadId: args.thread_id,
           configOverrides,
+          onEvent: progress.onEvent,
         });
+
+        progress.stop();
 
         const finishedAt = new Date();
 

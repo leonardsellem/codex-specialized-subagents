@@ -4,6 +4,8 @@ This file documents the MCP tools exposed by this server and their input/output 
 
 All tools return a human-readable `content` message plus a machine-validated `structuredContent` payload.
 
+Note: while `codex exec` is running, this server may also emit MCP logging notifications (best-effort) for liveness/progress; the final tool result is still only returned when the tool call completes.
+
 ## `delegate_run`
 
 Spawn a new specialist Codex sub-agent run via `codex exec`, writing a run directory with artifacts.
