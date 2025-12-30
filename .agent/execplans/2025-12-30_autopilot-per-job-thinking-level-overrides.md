@@ -1,16 +1,21 @@
 # Autopilot per-job thinking-level (reasoning effort) overrides
 
+> **Status:** Shipped (2025-12-30). Optional follow-ups remain (see “2025-12-30 RCA addendum”).
+
 **Parent macro ExecPlan:** `.agent/execplans/archive/2025-12-29_autonomous-subagent-delegation.md` (shipped `delegate_*` tools + artifact-first orchestration).
+
+**Tech Stack:** Node.js >= 20, TypeScript (NodeNext ESM), `@modelcontextprotocol/sdk`, `zod/v4`, `node:test`.
 
 **Research artifacts (gitignored by default):**
 - `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
 - `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
+- `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/codex-headless-model-override-guide.md`
 
 This ExecPlan is a living document. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` up to date.
 
 ## Purpose / Big Picture
 
-Today, `delegate_autopilot` can map its internal job `thinking_level` (`low | medium | high`) to a **model-name override** via env vars `CODEX_AUTOPILOT_MODEL_{LOW,MEDIUM,HIGH}` (it injects `-c model=...` into each `codex exec` sub-run).
+Before 2025-12-30, `delegate_autopilot` could map its internal job `thinking_level` (`low | medium | high`) to a **model-name override** via env vars `CODEX_AUTOPILOT_MODEL_{LOW,MEDIUM,HIGH}` (it injected `-c model=...` into each `codex exec` sub-run).
 
 In Codex, the practical “model” used for a run is a combination of:
 - **model name** (`model`)
@@ -34,22 +39,27 @@ Compatibility goal:
 - [x] (2025-12-30 07:18) Repo scan of current env-var overrides + docs; capture pointers in `repo_scan.md`.
 - [x] (2025-12-30 07:18) External research (OpenAI Codex config + MCP SDK patterns); capture notes in `external_research.md`.
 - [x] (2025-12-30 07:18) Rewrite this ExecPlan to be fully grounded + aligned with parent macro ExecPlan.
-- [x] (2025-12-30 08:02) Pre-flight scan: confirm current per-job overrides only support `CODEX_AUTOPILOT_MODEL_*` and emit `config_overrides: ["model=<id>"]` (unquoted today).
+- [x] (2025-12-30 08:02) Pre-flight scan (pre-change): confirm per-job overrides only support `CODEX_AUTOPILOT_MODEL_*` and emit unquoted `config_overrides: ["model=<id>"]`.
 - [x] (2025-12-30 08:05) Implement per-job `model_reasoning_effort` overrides in `src/lib/delegation/autopilot.ts`.
 - [x] (2025-12-30 08:07) Update unit tests for new env vars/overrides.
-- [x] (2025-12-30 08:09) Update docs (`docs/usage.md`, `README.md`, `docs/reference/tools.md`).
+- [x] (2025-12-30 08:09) Update docs (`docs/usage.md`, `README.md`, `docs/reference/tools.md`, `docs/troubleshooting.md`).
 - [x] (2025-12-30 08:07) Verify: `npm test`.
 - [x] (2025-12-30 08:09) Verify: `npm run lint`.
 - [x] (2025-12-30 08:10) Verify: `npm run build`.
 - [x] (2025-12-30 08:14) Archive ExecPlan + artifacts to `.agent/execplans/archive/`.
 - [x] (2025-12-30 10:08) RCA addendum: investigate “reasoning effort overrides not applied” reports from recent delegated runs; capture root cause + remediation plan.
+- [x] (2025-12-30 10:26) Grounding refresh: update `external_research.md` + `repo_scan.md` with post-ship state and confirm archive paths are correct.
 
 ## Surprises & Discoveries
 
-- Observation: Autopilot’s current “per-job model override” is a model-name override only (`-c model=...`), not a thinking-level override.
-  Evidence: `src/lib/delegation/autopilot.ts` (`CODEX_AUTOPILOT_MODEL_*` → `config_overrides: ["model=..."]`). See `repo_scan.md`.
+- Observation (pre-2025-12-30): Autopilot’s per-job override mechanism only affected model name (`-c model=...`), not reasoning effort.
+  Evidence: `repo_scan.md` (pre-change behavior), `src/lib/delegation/autopilot.ts` (current code path).
 
-- Observation: Existing unit tests currently lock in unquoted model overrides (e.g. `model=low-model`), so switching to TOML-quoted strings will require updating expectations.
+- Observation: Codex CLI `-c/--config key=value` parses the `value` as TOML; for string overrides, use a quoted string literal (example: `model_reasoning_effort="high"`).
+  Implementation note: this repo standardizes on `tomlString(value)` (currently `JSON.stringify(value)`) when emitting string overrides.
+  Evidence: `external_research.md`, `src/lib/codex/configOverrides.ts`.
+
+- Observation (pre-2025-12-30): Unit tests expected unquoted model overrides (e.g. `model=low-model`). We updated them to assert quoted string literals (e.g. `model="low-model"`).
   Evidence: `src/tests/delegation/autopilot-models.test.ts`.
 
 - Observation: OpenAI Codex docs explicitly define `model_reasoning_effort` as a first-class config key with allowed values `minimal | low | medium | high | xhigh` (and note `xhigh` is model-dependent).
@@ -59,17 +69,17 @@ Compatibility goal:
   Implication: per-job overrides may not take effect everywhere; we should document this caveat.
   Evidence: `external_research.md` (OpenAI managed config guidance).
 
-- Observation: A recent “missing reasoning effort override” report was for a `delegate_run` invocation, not `delegate_autopilot`.
-  Evidence: `${CODEX_HOME:-~/.codex}/delegator/runs/2025-12-30_090138343_0a66268e4f83/request.json` has `"tool": "delegate_run"`.
+- Observation: A “missing reasoning effort override” report was for a `delegate_run` invocation, not `delegate_autopilot`, so autopilot env mapping was not in play.
+  Evidence: In the relevant run directory, `<run_dir>/request.json` has `"tool": "delegate_run"`.
 
 - Observation: `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` only affects `delegate_autopilot`’s internal plan builder; it is not consulted by `delegate_run` / `delegate_resume`.
   Impact: if the parent agent calls `delegate_run` directly (instead of `delegate_autopilot`), autopilot per-job thinking-level mapping cannot apply and `codex exec` runs with no `model_reasoning_effort` override unless explicitly requested.
-  Evidence: `${CODEX_HOME:-~/.codex}/delegator/runs/2025-12-30_090138343_0a66268e4f83/codex_exec.json` shows `"config_overrides": []`.
+  Evidence: In the relevant run directory, `<run_dir>/codex_exec.json` shows `"config_overrides": []`.
 
-- Observation: `request.json` captures the *MCP tool input* only; autopilot-derived overrides (from server env vars) will not appear there.
+- Observation: For `delegate_autopilot`, the parent run `<run_dir>/request.json` captures the *MCP tool input* only, but each subrun `<run_dir>/subruns/<job_id>/request.json` includes the resolved `job` object (including `config_overrides`).
   Debug tip: verify effective overrides via:
-  - `delegate_autopilot`: `autopilot_plan.json` (job `config_overrides`) and each subrun’s `codex_exec.json`
-  - `delegate_run`/`delegate_resume`: `codex_exec.json`
+  - `delegate_autopilot`: `<run_dir>/autopilot_plan.json`, `<run_dir>/subruns/<job_id>/request.json`, and each subrun’s `<run_dir>/subruns/<job_id>/codex_exec.json`
+  - `delegate_run`/`delegate_resume`: `<run_dir>/codex_exec.json`
 
 ## Decision Log
 
@@ -81,8 +91,8 @@ Compatibility goal:
   Rationale: Avoid breaking existing users while fixing the confusing documentation.
   Date/Author: 2025-12-30 / agent
 
-- Decision: Emit string-valued config overrides as TOML-quoted strings (e.g., `model_reasoning_effort="high"`).
-  Rationale: Matches OpenAI docs/examples and avoids relying on the CLI’s “TOML parse failed → treat as raw string” fallback.
+- Decision: Emit string-valued config overrides as quoted string literals via `tomlString(...)` (currently `JSON.stringify(...)`), e.g. `model_reasoning_effort="high"`.
+  Rationale: Matches Codex CLI behavior (`-c/--config` values are parsed as TOML) and avoids relying on the raw-literal fallback for unquoted strings.
   Date/Author: 2025-12-30 / agent
 
 - Decision: Do not add new top-level schema fields for reasoning effort (keep using `config_overrides`).
@@ -95,8 +105,8 @@ Compatibility goal:
 
 ## Outcomes & Retrospective
 
-- Shipped per-job reasoning-effort overrides for `delegate_autopilot` via `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` → `config_overrides: ["model_reasoning_effort=\"...\""]`.
-- Kept compatibility with existing per-job model-name overrides (`CODEX_AUTOPILOT_MODEL_{LOW,MEDIUM,HIGH}`), now emitted as TOML-quoted strings (`model="..."`).
+- Shipped per-job reasoning-effort overrides for `delegate_autopilot` via `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` → `config_overrides: ['model_reasoning_effort="..."']`.
+- Kept compatibility with existing per-job model-name overrides (`CODEX_AUTOPILOT_MODEL_{LOW,MEDIUM,HIGH}`), now emitted as quoted string literals (`model="..."`).
 - Updated unit tests + docs to make “thinking_level” vs Codex config unambiguous.
 - Verified locally: `npm test`, `npm run lint`, `npm run build`.
 
@@ -111,11 +121,14 @@ Root cause:
 
 Remediation plan (follow-up work):
 
-1) Documentation + debugging guidance
-   - Make the scope explicit:
-     - Autopilot env vars only apply to `delegate_autopilot` jobs.
-     - `delegate_run`/`delegate_resume` require explicit `reasoning_effort` / `config_overrides` unless we add a server default.
-   - Add a “how to verify” recipe that points users at `codex_exec.json` and (for autopilot) `autopilot_plan.json`.
+1) Documentation + debugging guidance (done)
+   - Scope:
+     - Autopilot env vars apply to `delegate_autopilot` jobs only.
+     - `delegate_run`/`delegate_resume` require explicit `reasoning_effort` / `config_overrides` (unless we add a server default).
+   - Debugging:
+     - `delegate_autopilot`: inspect `autopilot_plan.json`, subrun `request.json`, and subrun `codex_exec.json`.
+     - `delegate_run`/`delegate_resume`: inspect `codex_exec.json`.
+   - Evidence: `docs/usage.md`, `docs/reference/tools.md`, `docs/troubleshooting.md`, `README.md`.
 
 2) Optional: add server-side defaults for `delegate_run` / `delegate_resume`
    - Introduce a new env var for the MCP server process, e.g. `CODEX_DELEGATE_REASONING_EFFORT` (single value like `low|medium|high|xhigh`).
@@ -140,20 +153,27 @@ Important nuance:
 
 Repo implementation touchpoints (current behavior):
 - `src/lib/delegation/route.ts`: assigns job `thinking_level`.
+- `src/lib/delegation/types.ts`: schemas for `thinking_level`, `model`, `config_overrides`.
 - `src/lib/delegation/autopilot.ts`: builds the autopilot `plan.jobs` and injects env-driven `config_overrides`.
+- `src/lib/codex/configOverrides.ts`: shared helpers for emitting quoted string overrides (`tomlString`) and building overrides (`buildCodexConfigOverrides`) for `delegate_run`/`delegate_resume`.
 - `src/lib/codex/runCodexExec.ts`: forwards each override string as `codex exec -c <key=value>`.
-- `src/tests/delegation/autopilot-models.test.ts`: unit test that currently locks in the model-name override behavior.
+- `src/server.ts`: `delegate_run`/`delegate_resume` parse `reasoning_effort`/`config_overrides` and pass merged overrides into `runCodexExec`.
+- `src/tests/delegation/autopilot-models.test.ts`: unit tests for per-job model + reasoning-effort env mapping.
+- `src/tests/codex/configOverrides.test.ts`: unit tests for override building/ordering.
 
-Docs to update:
-- `docs/usage.md`: currently describes per-job “model override” and implies this is how `thinking_level` is resolved.
-- `README.md`: repeats the “override model per job” claim.
-- `docs/reference/tools.md`: should clarify that `thinking_level` is an autopilot label and that Codex-side overrides happen via `config_overrides`.
+Docs updated:
+- `docs/usage.md`: explains `thinking_level` and documents `CODEX_AUTOPILOT_REASONING_EFFORT_*` and manual `reasoning_effort` inputs.
+- `README.md`: uses `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` as the recommended per-job control, and notes legacy `CODEX_AUTOPILOT_MODEL_*`.
+- `docs/reference/tools.md`: clarifies `thinking_level` vs Codex config, and documents `reasoning_effort` and `config_overrides` plumbing.
+- `docs/troubleshooting.md`: includes example config/env + timeout guidance.
 
 Grounding artifacts:
 - Current code pointers + existing behaviors: `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
 - External references (OpenAI + MCP SDK): `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
 
-## Plan of Work
+## Plan of Work (Completed)
+
+This feature is shipped. The “remaining work” items are optional follow-ups listed in the **2025-12-30 RCA addendum** above.
 
 ### Milestone A — Add per-job reasoning-effort override support
 
@@ -175,7 +195,7 @@ Outcome:
 Outcome:
 - `npm test`, `npm run lint`, `npm run build` pass.
 
-## Concrete Steps
+## Concrete Steps (Completed)
 
 ### 0) Pre-flight repo scan (quick sanity)
 
