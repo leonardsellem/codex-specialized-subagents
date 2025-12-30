@@ -7,7 +7,7 @@ import { z } from "zod/v4";
 import { createRunDir, writeJsonFile, writeTextFile } from "./lib/runDirs.js";
 import { runCodexExec, runCodexExecResume } from "./lib/codex/runCodexExec.js";
 import { SubagentOutputSchema } from "./lib/codex/subagentOutput.js";
-import { buildCodexConfigOverrides } from "./lib/codex/configOverrides.js";
+import { buildDelegateCodexConfigOverrides } from "./lib/codex/configOverrides.js";
 import { runAutopilot } from "./lib/delegation/autopilot.js";
 import { AutopilotInputSchema, AutopilotToolOutputSchema } from "./lib/delegation/types.js";
 import { formatAutopilotToolContent, formatDelegateToolContent } from "./lib/mcp/formatToolContent.js";
@@ -269,7 +269,7 @@ export async function startServer(): Promise<void> {
 
         await writeTextFile(subagentPromptPath, subagentPrompt);
 
-        const configOverrides = buildCodexConfigOverrides(args);
+        const configOverrides = buildDelegateCodexConfigOverrides(args, process.env);
         const log: LogFn = async (level, message) => {
           try {
             await server.sendLoggingMessage({ level, data: message }, extra.sessionId);
@@ -559,7 +559,7 @@ export async function startServer(): Promise<void> {
 
         await writeTextFile(subagentPromptPath, subagentPrompt);
 
-        const configOverrides = buildCodexConfigOverrides(args);
+        const configOverrides = buildDelegateCodexConfigOverrides(args, process.env);
         const log: LogFn = async (level, message) => {
           try {
             await server.sendLoggingMessage({ level, data: message }, extra.sessionId);

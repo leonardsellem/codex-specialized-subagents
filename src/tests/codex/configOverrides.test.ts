@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildCodexConfigOverrides } from "../../lib/codex/configOverrides.js";
+import { buildCodexConfigOverrides, buildDelegateCodexConfigOverrides } from "../../lib/codex/configOverrides.js";
 
 test("buildCodexConfigOverrides returns undefined when no overrides provided", () => {
   assert.equal(buildCodexConfigOverrides({}), undefined);
@@ -27,3 +27,38 @@ test("buildCodexConfigOverrides orders model < config_overrides < reasoning_effo
   );
 });
 
+test("buildDelegateCodexConfigOverrides applies CODEX_DELEGATE_REASONING_EFFORT default", () => {
+  assert.deepEqual(
+    buildDelegateCodexConfigOverrides(
+      {
+        model: "gpt-5",
+      },
+      { CODEX_DELEGATE_REASONING_EFFORT: "high" },
+    ),
+    ['model="gpt-5"', 'model_reasoning_effort="high"'],
+  );
+});
+
+test("buildDelegateCodexConfigOverrides does not override explicit reasoning_effort", () => {
+  assert.deepEqual(
+    buildDelegateCodexConfigOverrides(
+      {
+        reasoning_effort: "low",
+      },
+      { CODEX_DELEGATE_REASONING_EFFORT: "high" },
+    ),
+    ['model_reasoning_effort="low"'],
+  );
+});
+
+test("buildDelegateCodexConfigOverrides does not override explicit model_reasoning_effort in config_overrides", () => {
+  assert.deepEqual(
+    buildDelegateCodexConfigOverrides(
+      {
+        config_overrides: ['model_reasoning_effort="xhigh"'],
+      },
+      { CODEX_DELEGATE_REASONING_EFFORT: "high" },
+    ),
+    ['model_reasoning_effort="xhigh"'],
+  );
+});

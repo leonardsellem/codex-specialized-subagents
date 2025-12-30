@@ -2,6 +2,11 @@ export function tomlString(value: string): string {
   return JSON.stringify(value);
 }
 
+function hasExplicitModelReasoningEffortOverride(configOverrides: string[] | undefined): boolean {
+  if (!configOverrides || configOverrides.length === 0) return false;
+  return configOverrides.some((override) => /^model_reasoning_effort\s*=/.test(override.trimStart()));
+}
+
 export function buildCodexConfigOverrides(input: {
   model?: string;
   config_overrides?: string[];
@@ -22,3 +27,22 @@ export function buildCodexConfigOverrides(input: {
   return overrides.length > 0 ? overrides : undefined;
 }
 
+export function buildDelegateCodexConfigOverrides(
+  input: {
+    model?: string;
+    config_overrides?: string[];
+    reasoning_effort?: string;
+  },
+  env: Record<string, string | undefined>,
+): string[] | undefined {
+  const reasoningEffort = input.reasoning_effort?.trim();
+  const defaultReasoningEffort = env.CODEX_DELEGATE_REASONING_EFFORT?.trim();
+
+  const resolvedReasoningEffort =
+    reasoningEffort ||
+    (defaultReasoningEffort && !hasExplicitModelReasoningEffortOverride(input.config_overrides)
+      ? defaultReasoningEffort
+      : undefined);
+
+  return buildCodexConfigOverrides({ ...input, reasoning_effort: resolvedReasoningEffort });
+}
