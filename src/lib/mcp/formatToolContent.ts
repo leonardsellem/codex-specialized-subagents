@@ -108,7 +108,7 @@ export function formatDelegateToolContent(toolName: DelegateToolName, out: Deleg
   lines.push(
     ...formatListSection({
       title: "open_questions",
-      items: out.open_questions.map(truncateInline),
+      items: out.open_questions.map((q) => truncateInline(q)),
     }),
   );
 
@@ -116,7 +116,7 @@ export function formatDelegateToolContent(toolName: DelegateToolName, out: Deleg
   lines.push(
     ...formatListSection({
       title: "next_actions",
-      items: out.next_actions.map(truncateInline),
+      items: out.next_actions.map((a) => truncateInline(a)),
     }),
   );
 
@@ -196,7 +196,7 @@ export function formatAutopilotToolContent(out: AutopilotToolOutput): string {
   lines.push(
     ...formatListSection({
       title: "open_questions",
-      items: out.aggregate.open_questions.map(truncateInline),
+      items: out.aggregate.open_questions.map((q) => truncateInline(q)),
     }),
   );
 
@@ -204,7 +204,7 @@ export function formatAutopilotToolContent(out: AutopilotToolOutput): string {
   lines.push(
     ...formatListSection({
       title: "next_actions",
-      items: out.aggregate.next_actions.map(truncateInline),
+      items: out.aggregate.next_actions.map((a) => truncateInline(a)),
     }),
   );
 

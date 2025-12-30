@@ -47,6 +47,9 @@ Minimum scope (explicitly requested):
 - Observation: Plan references `repo_scan.md` / `external_research.md` under `.agent/execplans/artifacts/...`, but those files are gitignored and were not present in this worktree.
   Evidence: `ls -R .agent/execplans` shows no `artifacts/`; `.gitignore` ignores `.agent/execplans/artifacts/`.
 
+- Observation: Passing `truncateInline` directly to `Array.map(...)` treated the callback index as `maxChars`, causing unintended truncation (e.g., `Run npm test` → `Run npm tes…`).
+  Evidence: Sample formatter output generated via `node --import tsx -e ...`; fixed by wrapping (`map((s) => truncateInline(s))`) and covered by unit tests.
+
 ## Decision Log
 
 - Decision: Improve human readability by enhancing tool `content` only; keep `structuredContent` schemas unchanged.

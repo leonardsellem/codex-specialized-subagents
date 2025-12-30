@@ -11,7 +11,7 @@ test("formatDelegateToolContent includes required headers and debug pointers", (
     summary: "Delegated run finished.",
     deliverables: [],
     open_questions: [],
-    next_actions: [],
+    next_actions: ["Run npm test", "Run npm run build"],
     artifacts: [{ name: "last_message.json", path: "/tmp/run/last_message.json" }],
     timing: { duration_ms: 123 },
     status: "completed" as const,
@@ -26,6 +26,8 @@ test("formatDelegateToolContent includes required headers and debug pointers", (
   assert.ok(text.includes("subagent_thread_id: thread-123"));
   assert.ok(text.includes("Debug pointers:"));
   assert.ok(text.includes("- last_message.json: /tmp/run/last_message.json"));
+  assert.ok(text.includes("- Run npm test"));
+  assert.ok(text.includes("- Run npm run build"));
   assert.ok(!text.includes("stderr.log:"));
   assert.ok(!text.includes("result.json:"));
 });
@@ -136,4 +138,3 @@ test("formatAutopilotToolContent includes Autopilot plan + per-subrun summaries"
   assert.ok(text.includes("Subruns:"));
   assert.ok(text.includes("last_message.json: /tmp/autopilot/subruns/scan/last_message.json"));
 });
-
