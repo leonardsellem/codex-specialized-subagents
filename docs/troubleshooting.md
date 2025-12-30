@@ -11,6 +11,26 @@ Fix: increase the MCP tool timeout for this server in `$HOME/.codex/config.toml`
 tool_timeout_sec = 1200
 ```
 
+## Config error: “expected a string … env.tool_timeout_sec”
+
+Symptom: Codex fails to start with an error like:
+- `invalid type: integer '1200', expected a string`
+- `in mcp_servers.codex-specialized-subagents.env.tool_timeout_sec`
+
+Cause: `env` is for environment variables only, and env values must be strings. `tool_timeout_sec` is a top-level MCP server setting (number), not an env var.
+
+Fix: in `$HOME/.codex/config.toml`, move `tool_timeout_sec = 1200` into the server section, not under `.env`:
+
+```toml
+[mcp_servers.codex-specialized-subagents]
+tool_timeout_sec = 1200
+
+[mcp_servers.codex-specialized-subagents.env]
+CODEX_AUTOPILOT_REASONING_EFFORT_LOW = "low"
+CODEX_AUTOPILOT_REASONING_EFFORT_MEDIUM = "medium"
+CODEX_AUTOPILOT_REASONING_EFFORT_HIGH = "high"
+```
+
 ## `codex` not found / `ENOENT`
 
 This server shells out to `codex exec`. Make sure the Codex CLI is installed and available on your PATH:

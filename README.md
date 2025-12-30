@@ -47,6 +47,8 @@ EOF
 
 If you already have a `[mcp_servers.codex-specialized-subagents]` section, edit the existing `tool_timeout_sec` instead of appending a duplicate.
 
+Common gotcha: `tool_timeout_sec` is **not** an env var. If you put it under `mcp_servers.codex-specialized-subagents.env.*`, Codex will error with “expected a string” (env values must be strings).
+
 ### Register with Codex (recommended defaults)
 
 From the repo root (includes per-job reasoning-effort overrides for `delegate_autopilot`):
