@@ -49,6 +49,8 @@ If you already have a `[mcp_servers.codex-specialized-subagents]` section, edit 
 
 Common gotcha: `tool_timeout_sec` is **not** an env var. If you put it under `mcp_servers.codex-specialized-subagents.env.*`, Codex will error with “expected a string” (env values must be strings).
 
+If you see a TOML parse error about a “duplicate key” for `[mcp_servers.codex-specialized-subagents]`, you have that table declared twice — keep only one header and put `tool_timeout_sec = 1200` inside it.
+
 ### Register with Codex (recommended defaults)
 
 From the repo root (includes per-job reasoning-effort overrides for `delegate_autopilot`):

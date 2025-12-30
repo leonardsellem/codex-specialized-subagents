@@ -11,6 +11,18 @@ Fix: increase the MCP tool timeout for this server in `$HOME/.codex/config.toml`
 tool_timeout_sec = 1200
 ```
 
+## TOML parse error: “duplicate key” for `[mcp_servers.codex-specialized-subagents]`
+
+Symptom: Codex fails to start with a TOML parse error pointing at:
+- `[mcp_servers.codex-specialized-subagents]`
+- and “duplicate key”
+
+Cause: TOML does not allow declaring the same table twice. This commonly happens if you:
+- ran `codex mcp add codex-specialized-subagents ...` (which writes the table), and then
+- appended another `[mcp_servers.codex-specialized-subagents]` block manually.
+
+Fix: merge into a single table. Keep only one `[mcp_servers.codex-specialized-subagents]` header and put `tool_timeout_sec = 1200` in that same block.
+
 ## Config error: “expected a string … env.tool_timeout_sec”
 
 Symptom: Codex fails to start with an error like:
