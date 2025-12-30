@@ -37,7 +37,7 @@ Compatibility goal:
 - [x] (2025-12-30 08:02) Pre-flight scan: confirm current per-job overrides only support `CODEX_AUTOPILOT_MODEL_*` and emit `config_overrides: ["model=<id>"]` (unquoted today).
 - [x] (2025-12-30 08:05) Implement per-job `model_reasoning_effort` overrides in `src/lib/delegation/autopilot.ts`.
 - [x] (2025-12-30 08:07) Update unit tests for new env vars/overrides.
-- [ ] (2025-12-30 07:18) Update docs (`docs/usage.md`, `README.md`, `docs/reference/tools.md`).
+- [x] (2025-12-30 08:09) Update docs (`docs/usage.md`, `README.md`, `docs/reference/tools.md`).
 - [x] (2025-12-30 08:07) Verify: `npm test`.
 - [ ] (2025-12-30 07:18) Verify: `npm run lint`.
 - [ ] (2025-12-30 07:18) Verify: `npm run build`.

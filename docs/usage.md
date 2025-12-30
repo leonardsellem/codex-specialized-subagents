@@ -82,35 +82,52 @@ Delegated sub-agents can load skills from:
 
 In `skills_mode=auto`, the server selects up to `max_skills` skills based on the task text. Use `skills_mode=explicit` to request specific skills by name, or `skills_mode=none` to disable skills entirely.
 
-## Per-job model selection (autopilot)
+## Per-job thinking level (reasoning effort) overrides (autopilot)
 
-`delegate_autopilot` assigns each planned job a `thinking_level` (`low | medium | high`). If you set any of the env vars below, the server resolves `thinking_level` into a per-job model override and passes it into each `codex exec` sub-run via `--config/-c model=<MODEL_ID>`.
+`delegate_autopilot` assigns each planned job a `thinking_level` (`low | medium | high`). This is an internal label produced by this server’s routing logic.
+
+In Codex, the knob that controls “thinking level” is the `model_reasoning_effort` config key (documented values: `minimal | low | medium | high | xhigh`).
+
+If you set any of the env vars below on the MCP server process, this server maps each job’s `thinking_level` into a per-job `codex exec -c model_reasoning_effort="..."` override.
 
 Environment variables (server process):
-- `CODEX_AUTOPILOT_MODEL_LOW`
-- `CODEX_AUTOPILOT_MODEL_MEDIUM`
-- `CODEX_AUTOPILOT_MODEL_HIGH`
+- `CODEX_AUTOPILOT_REASONING_EFFORT_LOW`
+- `CODEX_AUTOPILOT_REASONING_EFFORT_MEDIUM`
+- `CODEX_AUTOPILOT_REASONING_EFFORT_HIGH`
 
-If an env var is unset/empty, the server does not override the model for that thinking level.
+If an env var is unset/empty/whitespace, the server does not override `model_reasoning_effort` for that thinking level.
 
 ### Example: set env vars when registering the MCP server
 
 ```bash
 codex mcp add codex-specialized-subagents \
-  --env CODEX_AUTOPILOT_MODEL_LOW=<MODEL_ID> \
-  --env CODEX_AUTOPILOT_MODEL_MEDIUM=<MODEL_ID> \
-  --env CODEX_AUTOPILOT_MODEL_HIGH=<MODEL_ID> \
+  --env CODEX_AUTOPILOT_REASONING_EFFORT_LOW=low \
+  --env CODEX_AUTOPILOT_REASONING_EFFORT_MEDIUM=medium \
+  --env CODEX_AUTOPILOT_REASONING_EFFORT_HIGH=xhigh \
   -- node "$(pwd)/dist/cli.js"
 ```
 
 ### Example: set env vars for local dev
 
 ```bash
-export CODEX_AUTOPILOT_MODEL_LOW=<MODEL_ID>
-export CODEX_AUTOPILOT_MODEL_MEDIUM=<MODEL_ID>
-export CODEX_AUTOPILOT_MODEL_HIGH=<MODEL_ID>
+export CODEX_AUTOPILOT_REASONING_EFFORT_LOW=low
+export CODEX_AUTOPILOT_REASONING_EFFORT_MEDIUM=medium
+export CODEX_AUTOPILOT_REASONING_EFFORT_HIGH=xhigh
 npm run dev
 ```
+
+### Optional/advanced: per-job model-name overrides (compat)
+
+If you want to override the Codex model *name* per job (separate from reasoning effort), set:
+- `CODEX_AUTOPILOT_MODEL_LOW`
+- `CODEX_AUTOPILOT_MODEL_MEDIUM`
+- `CODEX_AUTOPILOT_MODEL_HIGH`
+
+When set, this server passes `codex exec -c model="..."` for the matching jobs.
+
+### Caveat: managed Codex config may supersede CLI overrides
+
+Some environments may apply managed configuration that can override CLI `-c` settings, so per-job overrides may not take effect everywhere.
 
 ## Where results and logs go
 

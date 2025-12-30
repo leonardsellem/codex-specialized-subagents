@@ -132,6 +132,10 @@ Decide whether delegation is worthwhile, and if so orchestrate one or more speci
 - `artifacts`: includes `autopilot_*.json` plus `subruns/`
 - `timing`, `status`, `error`
 
+Notes:
+- `thinking_level` is autopilot’s internal label (`low | medium | high`), not a Codex config key.
+- `config_overrides` is a list of strings forwarded to `codex exec -c <override>` for that job (for example: `model_reasoning_effort="high"`).
+
 ### Example `content`
 
 ```text
