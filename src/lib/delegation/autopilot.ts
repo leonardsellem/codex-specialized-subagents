@@ -62,6 +62,10 @@ function buildSelectedSkillsList(selected: { name: string; origin: string; path:
   return selected.map((s) => `- ${s.name} (${s.origin}) — ${s.path}`).join("\n");
 }
 
+function tomlString(value: string): string {
+  return JSON.stringify(value);
+}
+
 function buildSubagentPrompt(options: {
   role: string;
   cwd: string;
@@ -334,16 +338,32 @@ export async function runAutopilot(args: unknown, options: RunAutopilotOptions =
 
   const plan = {
     jobs: routed.plan.jobs.map((job) => {
-      const key =
+      const modelKey =
         job.thinking_level === "low"
           ? "CODEX_AUTOPILOT_MODEL_LOW"
           : job.thinking_level === "medium"
             ? "CODEX_AUTOPILOT_MODEL_MEDIUM"
             : "CODEX_AUTOPILOT_MODEL_HIGH";
 
-      const model = env[key]?.trim() ? env[key]!.trim() : undefined;
-      const config_overrides = model ? [`model=${model}`] : undefined;
-      return { ...job, ...(model ? { model, config_overrides } : {}) };
+      const reasoningEffortKey =
+        job.thinking_level === "low"
+          ? "CODEX_AUTOPILOT_REASONING_EFFORT_LOW"
+          : job.thinking_level === "medium"
+            ? "CODEX_AUTOPILOT_REASONING_EFFORT_MEDIUM"
+            : "CODEX_AUTOPILOT_REASONING_EFFORT_HIGH";
+
+      const model = env[modelKey]?.trim() ? env[modelKey]!.trim() : undefined;
+      const reasoningEffort = env[reasoningEffortKey]?.trim() ? env[reasoningEffortKey]!.trim() : undefined;
+
+      const config_overrides: string[] = [];
+      if (model) config_overrides.push(`model=${tomlString(model)}`);
+      if (reasoningEffort) config_overrides.push(`model_reasoning_effort=${tomlString(reasoningEffort)}`);
+
+      return {
+        ...job,
+        ...(model ? { model } : {}),
+        ...(config_overrides.length > 0 ? { config_overrides } : {}),
+      };
     }),
   };
 
