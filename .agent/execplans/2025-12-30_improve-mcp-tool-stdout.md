@@ -28,7 +28,7 @@ Minimum scope (explicitly requested):
 - [x] (2025-12-30 07:05) Implement formatter helper(s) and wire into `src/server.ts`.
 - [x] (2025-12-30 07:05) Add unit tests for formatter output.
 - [x] (2025-12-30 07:05) Update docs (`docs/reference/tools.md`) with example outputs.
-- [ ] (2025-12-30 07:05) Validate (`npm test`, `npm run lint`, `npm run build`) + manual MCP smoke.
+- [x] (2025-12-30 07:05) Validate (`npm test`, `npm run lint`, `npm run build`) + manual MCP smoke.
 
 ## Surprises & Discoveries
 
@@ -49,6 +49,9 @@ Minimum scope (explicitly requested):
 
 - Observation: Passing `truncateInline` directly to `Array.map(...)` treated the callback index as `maxChars`, causing unintended truncation (e.g., `Run npm test` → `Run npm tes…`).
   Evidence: Sample formatter output generated via `node --import tsx -e ...`; fixed by wrapping (`map((s) => truncateInline(s))`) and covered by unit tests.
+
+- Observation: Typecheck initially failed when `structuredContent` stubs in `src/server.ts` used `as const`, making arrays `readonly` and widening `status` to `string` in some code paths.
+  Evidence: `npm run lint` (tsc) errors about readonly arrays and `status` incompatibility; resolved by removing `as const` on the full object and using a `DelegateToolOutput` type alias to context-type `structuredContent`.
 
 ## Decision Log
 
@@ -74,7 +77,16 @@ Minimum scope (explicitly requested):
 
 ## Outcomes & Retrospective
 
-To fill at completion.
+Shipped:
+- `delegate_run` / `delegate_resume` stdout now includes status + duration, run_dir, thread id, summary, truncated lists, and debug pointers (always `last_message.json`, plus `stderr.log`/`result.json` on failure/cancelled).
+- `delegate_autopilot` stdout now includes decision, **Autopilot plan**, per-subrun summaries + `last_message.json` pointers, and aggregate summary/lists.
+- Added unit tests locking formatting and truncation behavior; updated docs with example `content` blocks.
+
+Verification (2025-12-30):
+- `npm test` (22 pass, 1 skip)
+- `npm run lint` (tsc --noEmit) passed
+- `npm run build` passed
+- Manual smoke: started `npm run dev` (stdio server) without immediate crash (see `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/manual_mcp_smoke.log`).
 
 ## Context and Orientation
 

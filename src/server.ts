@@ -73,6 +73,8 @@ const DelegateToolOutputSchema = z.object({
   error: z.string().nullable(),
 });
 
+type DelegateToolOutput = z.infer<typeof DelegateToolOutputSchema>;
+
 export async function startServer(): Promise<void> {
   const server = new McpServer({
     name: "codex-specialized-subagents",
@@ -123,9 +125,9 @@ export async function startServer(): Promise<void> {
             finished_at: finishedAt.toISOString(),
             duration_ms: finishedAt.getTime() - startedAt.getTime(),
           },
-          status: "failed",
+          status: "failed" as const,
           error: message,
-        } as const;
+        };
 
         return {
           content: [
@@ -190,7 +192,7 @@ export async function startServer(): Promise<void> {
         if (selection.errors.length > 0) {
           const finishedAt = new Date();
 
-          const structuredContent = {
+          const structuredContent: DelegateToolOutput = {
             run_id: runId,
             run_dir: runDir,
             subagent_thread_id: null,
@@ -209,9 +211,9 @@ export async function startServer(): Promise<void> {
               finished_at: finishedAt.toISOString(),
               duration_ms: finishedAt.getTime() - startedAt.getTime(),
             },
-            status: "failed",
+            status: "failed" as const,
             error: selection.errors.join("; "),
-          } as const;
+          };
 
           return {
             content: [
@@ -313,7 +315,7 @@ export async function startServer(): Promise<void> {
           ? ["Inspect run_dir artifacts", ...parsedSubagentOutput.next_actions]
           : ["Inspect run_dir artifacts"];
 
-        const structuredContent = {
+        const structuredContent: DelegateToolOutput = {
           run_id: runId,
           run_dir: runDir,
           subagent_thread_id: codexResult.thread_id,
@@ -344,7 +346,7 @@ export async function startServer(): Promise<void> {
           },
           status,
           error,
-        } as const;
+        };
 
         return {
           content: [
@@ -358,7 +360,7 @@ export async function startServer(): Promise<void> {
       } catch (err) {
         const finishedAt = new Date();
 
-        const structuredContent = {
+        const structuredContent: DelegateToolOutput = {
           run_id: "unknown",
           run_dir: "unknown",
           subagent_thread_id: null,
@@ -373,9 +375,9 @@ export async function startServer(): Promise<void> {
             finished_at: finishedAt.toISOString(),
             duration_ms: finishedAt.getTime() - startedAt.getTime(),
           },
-          status: "failed",
+          status: "failed" as const,
           error: err instanceof Error ? err.message : String(err),
-        } as const;
+        };
 
         return {
           content: [
@@ -451,7 +453,7 @@ export async function startServer(): Promise<void> {
         if (selection.errors.length > 0) {
           const finishedAt = new Date();
 
-          const structuredContent = {
+          const structuredContent: DelegateToolOutput = {
             run_id: runId,
             run_dir: runDir,
             subagent_thread_id: args.thread_id,
@@ -470,9 +472,9 @@ export async function startServer(): Promise<void> {
               finished_at: finishedAt.toISOString(),
               duration_ms: finishedAt.getTime() - startedAt.getTime(),
             },
-            status: "failed",
+            status: "failed" as const,
             error: selection.errors.join("; "),
-          } as const;
+          };
 
           return {
             content: [
@@ -573,7 +575,7 @@ export async function startServer(): Promise<void> {
                   ? null
                   : "codex exec resume did not produce a valid last_message.json";
 
-        const structuredContent = {
+        const structuredContent: DelegateToolOutput = {
           run_id: runId,
           run_dir: runDir,
           subagent_thread_id: codexResult.thread_id ?? args.thread_id,
@@ -608,7 +610,7 @@ export async function startServer(): Promise<void> {
           },
           status,
           error,
-        } as const;
+        };
 
         return {
           content: [
@@ -622,7 +624,7 @@ export async function startServer(): Promise<void> {
       } catch (err) {
         const finishedAt = new Date();
 
-        const structuredContent = {
+        const structuredContent: DelegateToolOutput = {
           run_id: "unknown",
           run_dir: "unknown",
           subagent_thread_id: null,
@@ -637,9 +639,9 @@ export async function startServer(): Promise<void> {
             finished_at: finishedAt.toISOString(),
             duration_ms: finishedAt.getTime() - startedAt.getTime(),
           },
-          status: "failed",
+          status: "failed" as const,
           error: err instanceof Error ? err.message : String(err),
-        } as const;
+        };
 
         return {
           content: [
