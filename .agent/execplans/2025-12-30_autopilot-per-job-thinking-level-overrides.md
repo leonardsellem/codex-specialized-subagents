@@ -34,6 +34,7 @@ Compatibility goal:
 - [x] (2025-12-30 07:18) Repo scan of current env-var overrides + docs; capture pointers in `repo_scan.md`.
 - [x] (2025-12-30 07:18) External research (OpenAI Codex config + MCP SDK patterns); capture notes in `external_research.md`.
 - [x] (2025-12-30 07:18) Rewrite this ExecPlan to be fully grounded + aligned with parent macro ExecPlan.
+- [x] (2025-12-30 08:02) Pre-flight scan: confirm current per-job overrides only support `CODEX_AUTOPILOT_MODEL_*` and emit `config_overrides: ["model=<id>"]` (unquoted today).
 - [ ] (2025-12-30 07:18) Implement per-job `model_reasoning_effort` overrides in `src/lib/delegation/autopilot.ts`.
 - [ ] (2025-12-30 07:18) Update unit tests for new env vars/overrides.
 - [ ] (2025-12-30 07:18) Update docs (`docs/usage.md`, `README.md`, `docs/reference/tools.md`).
@@ -43,6 +44,9 @@ Compatibility goal:
 
 - Observation: Autopilot’s current “per-job model override” is a model-name override only (`-c model=...`), not a thinking-level override.
   Evidence: `src/lib/delegation/autopilot.ts` (`CODEX_AUTOPILOT_MODEL_*` → `config_overrides: ["model=..."]`). See `repo_scan.md`.
+
+- Observation: Existing unit tests currently lock in unquoted model overrides (e.g. `model=low-model`), so switching to TOML-quoted strings will require updating expectations.
+  Evidence: `src/tests/delegation/autopilot-models.test.ts`.
 
 - Observation: OpenAI Codex docs explicitly define `model_reasoning_effort` as a first-class config key with allowed values `minimal | low | medium | high | xhigh` (and note `xhigh` is model-dependent).
   Evidence: `external_research.md` (OpenAI “Codex configuration reference”).
