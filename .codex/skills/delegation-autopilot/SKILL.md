@@ -1,6 +1,6 @@
 ---
 name: delegation-autopilot
-description: In Codex interactive mode, call delegate_autopilot automatically for multi-step or cross-cutting requests (tests + docs + code), otherwise work normally.
+description: In Codex interactive mode, call delegate_autopilot automatically for multi-step or cross-cutting requests (including research-only), otherwise work normally.
 delegator_exclude: true
 ---
 
@@ -22,7 +22,9 @@ tool_timeout_sec = 600
 - The change is **cross-cutting** (multiple files/modules) or likely needs **specialist** attention (security/perf/research).
 - The user explicitly asks to delegate / use subagents.
 
-**Default rule:** if the request includes **code changes** *and* (tests or docs), call `delegate_autopilot` **before** running shell commands or editing files.
+**Default rules:**
+- If the request includes **code changes** *and* (tests or docs), call `delegate_autopilot` **before** running shell commands or editing files.
+- If the request is **multi-step research-only** and you want consistent “scan/implement/verify” decomposition or per-job `thinking_level` behavior, call `delegate_autopilot` with `sandbox="read-only"`.
 
 ## When not to call
 - The user is asking a **simple question** or wants a short explanation.
@@ -41,6 +43,11 @@ Optional knobs:
 ## After calling
 - If `structuredContent.decision.should_delegate` is `false`: continue normally without delegation.
 - Otherwise: use `structuredContent.aggregate` as the consolidated result, and inspect `structuredContent.run_dir` for artifacts.
+
+## If you choose `delegate_run` anyway
+
+- If you need higher/lower reasoning for a one-off run, pass `reasoning_effort` (or a `model_reasoning_effort=...` entry in `config_overrides`).
+- If you want a default for manual runs, set `CODEX_DELEGATE_REASONING_EFFORT` on the MCP server process.
 
 ## Safety
 - Never paste secrets from `${CODEX_HOME:-~/.codex}` or any local config.
