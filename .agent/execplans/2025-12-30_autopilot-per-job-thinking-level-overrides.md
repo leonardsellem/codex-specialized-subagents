@@ -42,6 +42,7 @@ Compatibility goal:
 - [x] (2025-12-30 08:09) Verify: `npm run lint`.
 - [x] (2025-12-30 08:10) Verify: `npm run build`.
 - [x] (2025-12-30 08:14) Archive ExecPlan + artifacts to `.agent/execplans/archive/`.
+- [x] (2025-12-30 10:08) RCA addendum: investigate “reasoning effort overrides not applied” reports from recent delegated runs; capture root cause + remediation plan.
 
 ## Surprises & Discoveries
 
@@ -57,6 +58,18 @@ Compatibility goal:
 - Observation: Codex environments may apply “managed config” that can supersede CLI `--config/-c` overrides for initial values.
   Implication: per-job overrides may not take effect everywhere; we should document this caveat.
   Evidence: `external_research.md` (OpenAI managed config guidance).
+
+- Observation: A recent “missing reasoning effort override” report was for a `delegate_run` invocation, not `delegate_autopilot`.
+  Evidence: `${CODEX_HOME:-~/.codex}/delegator/runs/2025-12-30_090138343_0a66268e4f83/request.json` has `"tool": "delegate_run"`.
+
+- Observation: `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` only affects `delegate_autopilot`’s internal plan builder; it is not consulted by `delegate_run` / `delegate_resume`.
+  Impact: if the parent agent calls `delegate_run` directly (instead of `delegate_autopilot`), autopilot per-job thinking-level mapping cannot apply and `codex exec` runs with no `model_reasoning_effort` override unless explicitly requested.
+  Evidence: `${CODEX_HOME:-~/.codex}/delegator/runs/2025-12-30_090138343_0a66268e4f83/codex_exec.json` shows `"config_overrides": []`.
+
+- Observation: `request.json` captures the *MCP tool input* only; autopilot-derived overrides (from server env vars) will not appear there.
+  Debug tip: verify effective overrides via:
+  - `delegate_autopilot`: `autopilot_plan.json` (job `config_overrides`) and each subrun’s `codex_exec.json`
+  - `delegate_run`/`delegate_resume`: `codex_exec.json`
 
 ## Decision Log
 
@@ -76,12 +89,42 @@ Compatibility goal:
   Rationale: `config_overrides` is already in `AutopilotJobSchema` and is the canonical mechanism for Codex-side settings; adding a dedicated field would be redundant and require broader schema/doc coordination.
   Date/Author: 2025-12-30 / agent
 
+- Decision: Add a remediation plan to address “expectation mismatch” between `delegate_autopilot` (env-mapped per-job overrides) vs `delegate_run` (explicit overrides only), and improve observability so failures are diagnosable from artifacts alone.
+  Rationale: Recent failures were due to tool selection (bypassing autopilot), not a bug in the autopilot plan builder.
+  Date/Author: 2025-12-30 / agent
+
 ## Outcomes & Retrospective
 
 - Shipped per-job reasoning-effort overrides for `delegate_autopilot` via `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` → `config_overrides: ["model_reasoning_effort=\"...\""]`.
 - Kept compatibility with existing per-job model-name overrides (`CODEX_AUTOPILOT_MODEL_{LOW,MEDIUM,HIGH}`), now emitted as TOML-quoted strings (`model="..."`).
 - Updated unit tests + docs to make “thinking_level” vs Codex config unambiguous.
 - Verified locally: `npm test`, `npm run lint`, `npm run build`.
+
+### 2025-12-30 RCA addendum (post-archive)
+
+Reported symptom:
+- “Recent delegated runs still didn’t apply thinking effort overrides; request.json doesn’t mention reasoning effort.”
+
+Root cause:
+- The referenced run was `delegate_run`, not `delegate_autopilot`, so autopilot per-job env mapping was never in play.
+- The server did not receive any explicit `reasoning_effort` / `config_overrides` input for that `delegate_run`, so it correctly produced a `codex exec` command with no `-c model_reasoning_effort="..."` override.
+
+Remediation plan (follow-up work):
+
+1) Documentation + debugging guidance
+   - Make the scope explicit:
+     - Autopilot env vars only apply to `delegate_autopilot` jobs.
+     - `delegate_run`/`delegate_resume` require explicit `reasoning_effort` / `config_overrides` unless we add a server default.
+   - Add a “how to verify” recipe that points users at `codex_exec.json` and (for autopilot) `autopilot_plan.json`.
+
+2) Optional: add server-side defaults for `delegate_run` / `delegate_resume`
+   - Introduce a new env var for the MCP server process, e.g. `CODEX_DELEGATE_REASONING_EFFORT` (single value like `low|medium|high|xhigh`).
+   - Behavior: if a `delegate_run`/`delegate_resume` request does **not** specify `reasoning_effort` and does **not** include an explicit `model_reasoning_effort=...` in `config_overrides`, inject `-c model_reasoning_effort="..."` from the env default.
+   - Add unit tests that assert `codex exec` argv includes `-c model_reasoning_effort="..."` when defaults apply.
+
+3) Optional: tighten the parent-agent (skill) behavior
+   - Update the `delegation-autopilot` skill guidance to recommend `delegate_autopilot` for research-only multi-step tasks too (not only code+tests+docs) when you want consistent per-job thinking-level behavior.
+   - Alternatively, have the parent pass `reasoning_effort` explicitly when it chooses `delegate_run` for “research” tasks.
 
 ## Context and Orientation
 
