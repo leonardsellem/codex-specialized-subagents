@@ -166,7 +166,7 @@ export function formatAutopilotToolContent(out: AutopilotToolOutput): string {
       lines.push(`  run_dir: ${jobResult.run_dir}`);
 
       const lastMessage = findArtifactPath(jobResult.artifacts, "last_message.json");
-      if (lastMessage) lines.push(`  last_message.json: ${lastMessage}`);
+      lines.push(`  last_message.json: ${lastMessage ?? "(none)"}`);
 
       if (jobResult.status !== "completed") {
         if (jobResult.error) lines.push(`  error: ${truncateInline(jobResult.error)}`);
@@ -210,4 +210,3 @@ export function formatAutopilotToolContent(out: AutopilotToolOutput): string {
 
   return lines.join("\n");
 }
-

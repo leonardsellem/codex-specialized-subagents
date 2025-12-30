@@ -26,7 +26,7 @@ Minimum scope (explicitly requested):
 - [x] (2025-12-30 07:13) Ground plan via MCP spec/SDK research + repo scan; write artifacts under `.agent/execplans/artifacts/2025-12-30_improve-mcp-tool-stdout/`.
 - [x] (2025-12-30 07:05) Define stdout format spec (tool-by-tool) + truncation rules.
 - [x] (2025-12-30 07:05) Implement formatter helper(s) and wire into `src/server.ts`.
-- [ ] (2025-12-30 07:05) Add unit tests for formatter output.
+- [x] (2025-12-30 07:05) Add unit tests for formatter output.
 - [ ] (2025-12-30 07:05) Update docs (`docs/reference/tools.md`) with example outputs.
 - [ ] (2025-12-30 07:05) Validate (`npm test`, `npm run lint`, `npm run build`) + manual MCP smoke.
 
