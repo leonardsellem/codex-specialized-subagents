@@ -53,7 +53,9 @@ Compatibility goal:
 - [x] (2025-12-30 10:26) Grounding refresh: update `external_research.md` + `repo_scan.md` with post-ship state and confirm archive paths are correct.
 - [x] (2025-12-30 10:49) Re-verify on current HEAD: `npm test`, `npm run lint`, `npm run build` (fresh evidence for this execution pass).
 - [ ] (2025-12-30 10:49) Re-archive this ExecPlan + artifacts to `.agent/execplans/archive/` (do this after RCA follow-ups are implemented).
-- [ ] (2025-12-30 10:50) Implement RCA remediation #2: server-side default reasoning effort for `delegate_run` / `delegate_resume` via env var.
+- [x] (2025-12-30 10:54) Implement RCA remediation #2 (code + unit tests): server-side default reasoning effort for `delegate_run` / `delegate_resume` via `CODEX_DELEGATE_REASONING_EFFORT`.
+- [ ] (2025-12-30 10:54) Implement RCA remediation #2 (docs): document `CODEX_DELEGATE_REASONING_EFFORT` in `README.md` + `docs/usage.md` + `docs/reference/tools.md` (+ troubleshooting as needed).
+- [ ] (2025-12-30 10:54) Verify (post-change): `npm test`, `npm run lint`, `npm run build`.
 - [ ] (2025-12-30 10:50) Implement RCA remediation #3: tighten parent-agent (`delegation-autopilot`) guidance re: when to use `delegate_autopilot` vs `delegate_run`.
 
 ## Surprises & Discoveries
