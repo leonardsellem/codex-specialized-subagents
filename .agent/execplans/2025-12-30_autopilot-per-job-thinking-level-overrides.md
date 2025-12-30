@@ -55,7 +55,7 @@ Compatibility goal:
 - [ ] (2025-12-30 10:49) Re-archive this ExecPlan + artifacts to `.agent/execplans/archive/` (do this after RCA follow-ups are implemented).
 - [x] (2025-12-30 10:54) Implement RCA remediation #2 (code + unit tests): server-side default reasoning effort for `delegate_run` / `delegate_resume` via `CODEX_DELEGATE_REASONING_EFFORT`.
 - [x] (2025-12-30 10:57) Implement RCA remediation #2 (docs): document `CODEX_DELEGATE_REASONING_EFFORT` in `README.md` + `docs/usage.md` + `docs/reference/tools.md` (+ troubleshooting as needed).
-- [ ] (2025-12-30 10:54) Verify (post-change): `npm test`, `npm run lint`, `npm run build`.
+- [x] (2025-12-30 11:00) Verify (post-change): `npm test` (30 pass, 1 skipped), `npm run lint`, `npm run build`.
 - [x] (2025-12-30 10:59) Implement RCA remediation #3: tighten parent-agent (`delegation-autopilot`) guidance re: when to use `delegate_autopilot` vs `delegate_run`.
 
 ## Surprises & Discoveries
@@ -357,6 +357,10 @@ Recovery:
   - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1049_npm-test.log`
   - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1049_npm-run-lint.log`
   - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1049_npm-run-build.log`
+- (2025-12-30 11:00) Post-change verification logs (after RCA remediation #2/#3):
+  - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1100_npm-test.log`
+  - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1100_npm-run-lint.log`
+  - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1100_npm-run-build.log`
 
 ## Interfaces and Dependencies
 
