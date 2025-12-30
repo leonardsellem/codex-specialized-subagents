@@ -15,6 +15,45 @@ async function withTmpDir<T>(prefix: string, fn: (tmpDir: string) => Promise<T>)
   }
 }
 
+type CodexExecCall = { runDir: string; configOverrides: string[]; codexHome: string | undefined };
+
+function createMockRunCodexExec(calls: CodexExecCall[]): (options: any) => Promise<any> {
+  return async (options) => {
+    calls.push({
+      runDir: options.runDir,
+      configOverrides: options.configOverrides ?? [],
+      codexHome: options.env?.CODEX_HOME,
+    });
+
+    const now = new Date();
+    const lastMessagePath = path.join(options.runDir, "last_message.json");
+    await fs.mkdir(options.runDir, { recursive: true });
+    await fs.writeFile(
+      lastMessagePath,
+      JSON.stringify({ summary: "ok", deliverables: [], open_questions: [], next_actions: [] }, null, 2) + "\n",
+    );
+
+    return {
+      started_at: now.toISOString(),
+      finished_at: now.toISOString(),
+      duration_ms: 0,
+      cancelled: false,
+      exit_code: 0,
+      signal: null,
+      thread_id: null,
+      artifacts: {
+        subagent_output_schema_path: path.join(options.runDir, "subagent_output.schema.json"),
+        events_path: path.join(options.runDir, "events.jsonl"),
+        stderr_path: path.join(options.runDir, "stderr.log"),
+        last_message_path: lastMessagePath,
+        thread_path: path.join(options.runDir, "thread.json"),
+        result_path: path.join(options.runDir, "result.json"),
+      },
+      error: null,
+    };
+  };
+}
+
 test("runAutopilot resolves per-job model overrides from env", async () => {
   await withTmpDir("codex-specialized-subagents-autopilot-models-", async (tmpDir) => {
     const codexHome = path.join(tmpDir, "codex_home");
@@ -25,7 +64,7 @@ test("runAutopilot resolves per-job model overrides from env", async () => {
       CODEX_AUTOPILOT_MODEL_HIGH: "high-model",
     };
 
-    const codexExecCalls: Array<{ runDir: string; configOverrides: string[]; codexHome: string | undefined }> = [];
+    const codexExecCalls: CodexExecCall[] = [];
 
     const result = await runAutopilot(
       {
@@ -41,44 +80,7 @@ test("runAutopilot resolves per-job model overrides from env", async () => {
         env,
         deps: {
           discoverSkills: async () => ({ roots: {}, skills: [] }),
-          runCodexExec: async (options) => {
-            codexExecCalls.push({
-              runDir: options.runDir,
-              configOverrides: options.configOverrides ?? [],
-              codexHome: options.env?.CODEX_HOME,
-            });
-
-            const now = new Date();
-            const lastMessagePath = path.join(options.runDir, "last_message.json");
-            await fs.mkdir(options.runDir, { recursive: true });
-            await fs.writeFile(
-              lastMessagePath,
-              JSON.stringify(
-                { summary: "ok", deliverables: [], open_questions: [], next_actions: [] },
-                null,
-                2,
-              ) + "\n",
-            );
-
-            return {
-              started_at: now.toISOString(),
-              finished_at: now.toISOString(),
-              duration_ms: 0,
-              cancelled: false,
-              exit_code: 0,
-              signal: null,
-              thread_id: null,
-              artifacts: {
-                subagent_output_schema_path: path.join(options.runDir, "subagent_output.schema.json"),
-                events_path: path.join(options.runDir, "events.jsonl"),
-                stderr_path: path.join(options.runDir, "stderr.log"),
-                last_message_path: lastMessagePath,
-                thread_path: path.join(options.runDir, "thread.json"),
-                result_path: path.join(options.runDir, "result.json"),
-              },
-              error: null,
-            };
-          },
+          runCodexExec: createMockRunCodexExec(codexExecCalls),
         },
       },
     );
@@ -136,7 +138,7 @@ test("runAutopilot resolves per-job reasoning-effort overrides from env", async 
       CODEX_AUTOPILOT_REASONING_EFFORT_HIGH: "xhigh",
     };
 
-    const codexExecCalls: Array<{ runDir: string; configOverrides: string[]; codexHome: string | undefined }> = [];
+    const codexExecCalls: CodexExecCall[] = [];
 
     const result = await runAutopilot(
       {
@@ -152,44 +154,7 @@ test("runAutopilot resolves per-job reasoning-effort overrides from env", async 
         env,
         deps: {
           discoverSkills: async () => ({ roots: {}, skills: [] }),
-          runCodexExec: async (options) => {
-            codexExecCalls.push({
-              runDir: options.runDir,
-              configOverrides: options.configOverrides ?? [],
-              codexHome: options.env?.CODEX_HOME,
-            });
-
-            const now = new Date();
-            const lastMessagePath = path.join(options.runDir, "last_message.json");
-            await fs.mkdir(options.runDir, { recursive: true });
-            await fs.writeFile(
-              lastMessagePath,
-              JSON.stringify(
-                { summary: "ok", deliverables: [], open_questions: [], next_actions: [] },
-                null,
-                2,
-              ) + "\n",
-            );
-
-            return {
-              started_at: now.toISOString(),
-              finished_at: now.toISOString(),
-              duration_ms: 0,
-              cancelled: false,
-              exit_code: 0,
-              signal: null,
-              thread_id: null,
-              artifacts: {
-                subagent_output_schema_path: path.join(options.runDir, "subagent_output.schema.json"),
-                events_path: path.join(options.runDir, "events.jsonl"),
-                stderr_path: path.join(options.runDir, "stderr.log"),
-                last_message_path: lastMessagePath,
-                thread_path: path.join(options.runDir, "thread.json"),
-                result_path: path.join(options.runDir, "result.json"),
-              },
-              error: null,
-            };
-          },
+          runCodexExec: createMockRunCodexExec(codexExecCalls),
         },
       },
     );
@@ -230,5 +195,64 @@ test("runAutopilot resolves per-job reasoning-effort overrides from env", async 
     ) as { job?: Record<string, unknown> };
     assert.equal(scanRequest.job?.thinking_level, "low");
     assert.deepEqual(scanRequest.job?.config_overrides, ['model_reasoning_effort="low"']);
+  });
+});
+
+test("runAutopilot treats blank per-job overrides as unset", async () => {
+  await withTmpDir("codex-specialized-subagents-autopilot-blank-overrides-", async (tmpDir) => {
+    const codexHome = path.join(tmpDir, "codex_home");
+    const env = {
+      ...process.env,
+      CODEX_HOME: codexHome,
+      CODEX_AUTOPILOT_MODEL_LOW: "   ",
+      CODEX_AUTOPILOT_REASONING_EFFORT_LOW: "   ",
+      CODEX_AUTOPILOT_REASONING_EFFORT_HIGH: "",
+    };
+
+    const codexExecCalls: CodexExecCall[] = [];
+
+    const result = await runAutopilot(
+      {
+        task: "Refactor the MCP server to add delegate_autopilot and update tests + README.",
+        include_repo_skills: false,
+        include_global_skills: false,
+        skills_mode: "none",
+        max_agents: 3,
+        max_parallel: 2,
+        sandbox: "read-only",
+      },
+      {
+        env,
+        deps: {
+          discoverSkills: async () => ({ roots: {}, skills: [] }),
+          runCodexExec: createMockRunCodexExec(codexExecCalls),
+        },
+      },
+    );
+
+    assert.equal(result.decision.should_delegate, true);
+
+    assert.equal(result.plan.jobs.length, 3);
+    const scan = result.plan.jobs.find((j) => j.id === "scan");
+    const implement = result.plan.jobs.find((j) => j.id === "implement");
+    const verify = result.plan.jobs.find((j) => j.id === "verify");
+
+    assert.equal(scan?.thinking_level, "low");
+    assert.equal(scan?.model, undefined);
+    assert.equal(scan?.config_overrides, undefined);
+
+    assert.equal(implement?.thinking_level, "high");
+    assert.equal(implement?.model, undefined);
+    assert.equal(implement?.config_overrides, undefined);
+
+    assert.equal(verify?.thinking_level, "low");
+    assert.equal(verify?.model, undefined);
+    assert.equal(verify?.config_overrides, undefined);
+
+    assert.equal(codexExecCalls.length, 3);
+    for (const call of codexExecCalls) {
+      assert.equal(call.codexHome, codexHome);
+      assert.deepEqual(call.configOverrides, []);
+    }
   });
 });

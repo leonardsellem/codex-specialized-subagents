@@ -77,7 +77,10 @@ Compatibility goal:
 
 ## Outcomes & Retrospective
 
-To fill after implementation ships.
+- Shipped per-job reasoning-effort overrides for `delegate_autopilot` via `CODEX_AUTOPILOT_REASONING_EFFORT_{LOW,MEDIUM,HIGH}` → `config_overrides: ["model_reasoning_effort=\"...\""]`.
+- Kept compatibility with existing per-job model-name overrides (`CODEX_AUTOPILOT_MODEL_{LOW,MEDIUM,HIGH}`), now emitted as TOML-quoted strings (`model="..."`).
+- Updated unit tests + docs to make “thinking_level” vs Codex config unambiguous.
+- Verified locally: `npm test`, `npm run lint`, `npm run build`.
 
 ## Context and Orientation
 
@@ -265,6 +268,7 @@ Recovery:
 - (2025-12-30 08:07) Local verification: `npm test` (23 pass, 1 skipped).
 - (2025-12-30 08:09) Local verification: `npm run lint`.
 - (2025-12-30 08:10) Local verification: `npm run build`.
+- (2025-12-30 08:12) Added unit test for blank/whitespace overrides; re-verified: `npm test` (24 pass, 1 skipped), `npm run lint`, `npm run build`.
 
 ## Interfaces and Dependencies
 
