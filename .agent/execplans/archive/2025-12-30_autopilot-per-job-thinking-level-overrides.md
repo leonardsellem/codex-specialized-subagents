@@ -57,6 +57,7 @@ Compatibility goal:
 - [x] (2025-12-30 10:57) Implement RCA remediation #2 (docs): document `CODEX_DELEGATE_REASONING_EFFORT` in `README.md` + `docs/usage.md` + `docs/reference/tools.md` (+ troubleshooting as needed).
 - [x] (2025-12-30 11:00) Verify (post-change): `npm test` (30 pass, 1 skipped), `npm run lint`, `npm run build`.
 - [x] (2025-12-30 10:59) Implement RCA remediation #3: tighten parent-agent (`delegation-autopilot`) guidance re: when to use `delegate_autopilot` vs `delegate_run`.
+- [x] (2025-12-30 11:05) End-to-end verification: `RUN_CODEX_INTEGRATION_TESTS=1 npm test` (runs real `codex exec` and asserts `CODEX_DELEGATE_REASONING_EFFORT` is applied via `codex_exec.json` `config_overrides`).
 
 ## Surprises & Discoveries
 
