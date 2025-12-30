@@ -3,8 +3,8 @@
 **Parent macro ExecPlan:** `.agent/execplans/archive/2025-12-29_autonomous-subagent-delegation.md` (shipped `delegate_*` tools + artifact-first orchestration).
 
 **Research artifacts (gitignored by default):**
-- `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
-- `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
+- `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
+- `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
 
 This ExecPlan is a living document. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` up to date.
 
@@ -41,6 +41,7 @@ Compatibility goal:
 - [x] (2025-12-30 08:07) Verify: `npm test`.
 - [x] (2025-12-30 08:09) Verify: `npm run lint`.
 - [x] (2025-12-30 08:10) Verify: `npm run build`.
+- [x] (2025-12-30 08:14) Archive ExecPlan + artifacts to `.agent/execplans/archive/`.
 
 ## Surprises & Discoveries
 
@@ -106,8 +107,8 @@ Docs to update:
 - `docs/reference/tools.md`: should clarify that `thinking_level` is an autopilot label and that Codex-side overrides happen via `config_overrides`.
 
 Grounding artifacts:
-- Current code pointers + existing behaviors: `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
-- External references (OpenAI + MCP SDK): `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
+- Current code pointers + existing behaviors: `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
+- External references (OpenAI + MCP SDK): `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
 
 ## Plan of Work
 
@@ -263,8 +264,8 @@ Recovery:
 
 ## Artifacts and Notes
 
-- External research summary: `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
-- Repo scan grounding notes: `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
+- External research summary: `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/external_research.md`
+- Repo scan grounding notes: `.agent/execplans/archive/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/repo_scan.md`
 - (2025-12-30 08:07) Local verification: `npm test` (23 pass, 1 skipped).
 - (2025-12-30 08:09) Local verification: `npm run lint`.
 - (2025-12-30 08:10) Local verification: `npm run build`.
