@@ -129,6 +129,12 @@ When set, this server passes `codex exec -c model="..."` for the matching jobs.
 
 Some environments may apply managed configuration that can override CLI `-c` settings, so per-job overrides may not take effect everywhere.
 
+## Reasoning effort overrides (manual delegate_run / delegate_resume)
+
+If you want to control reasoning effort for a single run, pass either:
+- `reasoning_effort`: forwarded as `codex exec -c model_reasoning_effort="..."`, or
+- `config_overrides`: forwarded as `codex exec -c <override>` (advanced; lets you set multiple keys).
+
 ## Where results and logs go
 
 Every tool call returns a `run_dir` and writes artifacts under:

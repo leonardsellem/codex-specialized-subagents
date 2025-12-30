@@ -102,6 +102,8 @@ If you prefer explicit tool usage, tell Codex to call one of:
 - `delegate_run` (single sub-agent run)
 - `delegate_resume` (resume a prior sub-agent thread)
 
+Optional (advanced): for `delegate_run` / `delegate_resume`, you can pass `reasoning_effort` (maps to `codex exec -c model_reasoning_effort="..."`) or raw `config_overrides` (maps to `codex exec -c <override>`).
+
 ## Skills
 
 Sub-agent runs can load Codex skills from:

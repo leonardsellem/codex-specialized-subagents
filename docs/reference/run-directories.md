@@ -18,6 +18,7 @@ Typical layout:
   skills_index.json
   selected_skills.json
   subagent_prompt.txt
+  codex_exec.json
   subagent_output.schema.json
   events.jsonl
   stderr.log
@@ -42,6 +43,7 @@ The parent run directory contains routing artifacts plus `subruns/` for each job
       request.json
       selected_skills.json
       subagent_prompt.txt
+      codex_exec.json
       subagent_output.schema.json
       events.jsonl
       stderr.log
@@ -53,5 +55,6 @@ The parent run directory contains routing artifacts plus `subruns/` for each job
 ## Debugging tips
 
 - Start with `stderr.log` and `result.json` to see why `codex exec` failed.
+- `codex_exec.json` records the exact `codex exec` argv and config overrides used.
 - `events.jsonl` is the full event stream.
 - `last_message.json` is the final structured output (must match the schema in `reference/tools.md`).

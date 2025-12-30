@@ -275,6 +275,7 @@ async function runAutopilotJob(options: {
       { name: "request.json", path: requestPath },
       { name: "selected_skills.json", path: selectedSkillsPath },
       { name: "subagent_prompt.txt", path: subagentPromptPath },
+      { name: "codex_exec.json", path: codexResult.artifacts.codex_exec_path },
       { name: "events.jsonl", path: codexResult.artifacts.events_path },
       { name: "stderr.log", path: codexResult.artifacts.stderr_path },
       { name: "last_message.json", path: codexResult.artifacts.last_message_path },

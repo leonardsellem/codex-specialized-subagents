@@ -7,6 +7,7 @@ import { z } from "zod/v4";
 import { createRunDir, writeJsonFile, writeTextFile } from "./lib/runDirs.js";
 import { runCodexExec, runCodexExecResume } from "./lib/codex/runCodexExec.js";
 import { SubagentOutputSchema } from "./lib/codex/subagentOutput.js";
+import { buildCodexConfigOverrides } from "./lib/codex/configOverrides.js";
 import { runAutopilot } from "./lib/delegation/autopilot.js";
 import { AutopilotInputSchema, AutopilotToolOutputSchema } from "./lib/delegation/types.js";
 import { formatAutopilotToolContent, formatDelegateToolContent } from "./lib/mcp/formatToolContent.js";
@@ -26,6 +27,9 @@ const DelegateBaseInputSchema = z.object({
   include_global_skills: z.boolean().optional().default(true),
   sandbox: SandboxSchema.optional().default("read-only"),
   skip_git_repo_check: z.boolean().optional().default(false),
+  model: z.string().optional(),
+  reasoning_effort: z.string().optional(),
+  config_overrides: z.array(z.string()).optional(),
 });
 
 const DelegateRunInputSchema = DelegateBaseInputSchema.extend({
@@ -256,6 +260,8 @@ export async function startServer(): Promise<void> {
 
         await writeTextFile(subagentPromptPath, subagentPrompt);
 
+        const configOverrides = buildCodexConfigOverrides(args);
+
         const codexResult = await runCodexExec({
           runDir,
           cwd: args.cwd,
@@ -263,6 +269,7 @@ export async function startServer(): Promise<void> {
           skipGitRepoCheck: args.skip_git_repo_check,
           prompt: subagentPrompt,
           abortSignal: extra.signal,
+          configOverrides,
         });
 
         const finishedAt = new Date();
@@ -329,6 +336,7 @@ export async function startServer(): Promise<void> {
             { name: "skills_index.json", path: skillsIndexPath },
             { name: "selected_skills.json", path: selectedSkillsPath },
             { name: "subagent_prompt.txt", path: subagentPromptPath },
+            { name: "codex_exec.json", path: codexResult.artifacts.codex_exec_path },
             { name: "events.jsonl", path: codexResult.artifacts.events_path },
             { name: "stderr.log", path: codexResult.artifacts.stderr_path },
             { name: "last_message.json", path: codexResult.artifacts.last_message_path },
@@ -523,6 +531,8 @@ export async function startServer(): Promise<void> {
 
         await writeTextFile(subagentPromptPath, subagentPrompt);
 
+        const configOverrides = buildCodexConfigOverrides(args);
+
         const codexResult = await runCodexExecResume({
           runDir,
           cwd: args.cwd,
@@ -531,6 +541,7 @@ export async function startServer(): Promise<void> {
           prompt: subagentPrompt,
           abortSignal: extra.signal,
           threadId: args.thread_id,
+          configOverrides,
         });
 
         const finishedAt = new Date();
@@ -593,6 +604,7 @@ export async function startServer(): Promise<void> {
             { name: "skills_index.json", path: skillsIndexPath },
             { name: "selected_skills.json", path: selectedSkillsPath },
             { name: "subagent_prompt.txt", path: subagentPromptPath },
+            { name: "codex_exec.json", path: codexResult.artifacts.codex_exec_path },
             { name: "events.jsonl", path: codexResult.artifacts.events_path },
             { name: "stderr.log", path: codexResult.artifacts.stderr_path },
             { name: "last_message.json", path: codexResult.artifacts.last_message_path },

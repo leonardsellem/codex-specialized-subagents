@@ -33,6 +33,7 @@ export type RunCodexExecResult = {
   thread_id: string | null;
   parent_thread_id?: string;
   artifacts: {
+    codex_exec_path: string;
     subagent_output_schema_path: string;
     events_path: string;
     stderr_path: string;
@@ -94,6 +95,7 @@ async function runCodexExecInternal(options: RunCodexExecOptions & {
   const startedAt = new Date();
 
   const subagentOutputSchemaPath = path.join(options.runDir, "subagent_output.schema.json");
+  const codexExecPath = path.join(options.runDir, "codex_exec.json");
   const eventsPath = path.join(options.runDir, "events.jsonl");
   const stderrPath = path.join(options.runDir, "stderr.log");
   const lastMessagePath = path.join(options.runDir, "last_message.json");
@@ -140,6 +142,18 @@ async function runCodexExecInternal(options: RunCodexExecOptions & {
 
   // Read prompt from stdin to avoid shell escaping and arg length issues.
   args.push("-");
+
+  await ensureParentDir(codexExecPath);
+  await writeJsonFile(codexExecPath, {
+    argv: ["codex", ...args],
+    run_dir: options.runDir,
+    codex_cwd: options.cwd,
+    sandbox: options.sandbox,
+    skip_git_repo_check: options.skipGitRepoCheck,
+    config_overrides: options.configOverrides ?? [],
+    subcommand_args: options.subcommandArgs ?? [],
+    prompt_via_stdin: true,
+  });
 
   const child = spawn("codex", args, {
     env: options.env ?? process.env,
@@ -239,6 +253,7 @@ async function runCodexExecInternal(options: RunCodexExecOptions & {
     thread_id: threadId,
     ...(options.parentThreadId ? { parent_thread_id: options.parentThreadId } : {}),
     artifacts: {
+      codex_exec_path: codexExecPath,
       subagent_output_schema_path: subagentOutputSchemaPath,
       events_path: eventsPath,
       stderr_path: stderrPath,
