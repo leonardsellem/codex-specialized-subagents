@@ -1,6 +1,8 @@
 # Autopilot per-job thinking-level (reasoning effort) overrides
 
 > **Status:** Shipped (2025-12-30). Optional follow-ups remain (see “2025-12-30 RCA addendum”).
+>
+> **Reopened:** 2025-12-30 to implement RCA remediation items (2) and (3) from this document.
 
 **Parent macro ExecPlan:** `.agent/execplans/archive/2025-12-29_autonomous-subagent-delegation.md` (shipped `delegate_*` tools + artifact-first orchestration).
 
@@ -49,8 +51,10 @@ Compatibility goal:
 - [x] (2025-12-30 08:14) Archive ExecPlan + artifacts to `.agent/execplans/archive/`.
 - [x] (2025-12-30 10:08) RCA addendum: investigate “reasoning effort overrides not applied” reports from recent delegated runs; capture root cause + remediation plan.
 - [x] (2025-12-30 10:26) Grounding refresh: update `external_research.md` + `repo_scan.md` with post-ship state and confirm archive paths are correct.
-- [ ] (2025-12-30 10:49) Re-verify on current HEAD: `npm test`, `npm run lint`, `npm run build` (fresh evidence for this execution pass).
-- [ ] (2025-12-30 10:49) Re-archive this ExecPlan + artifacts to `.agent/execplans/archive/` (restore “shipped” invariants and align artifact paths).
+- [x] (2025-12-30 10:49) Re-verify on current HEAD: `npm test`, `npm run lint`, `npm run build` (fresh evidence for this execution pass).
+- [ ] (2025-12-30 10:49) Re-archive this ExecPlan + artifacts to `.agent/execplans/archive/` (do this after RCA follow-ups are implemented).
+- [ ] (2025-12-30 10:50) Implement RCA remediation #2: server-side default reasoning effort for `delegate_run` / `delegate_resume` via env var.
+- [ ] (2025-12-30 10:50) Implement RCA remediation #3: tighten parent-agent (`delegation-autopilot`) guidance re: when to use `delegate_autopilot` vs `delegate_run`.
 
 ## Surprises & Discoveries
 
@@ -111,6 +115,10 @@ Compatibility goal:
 
 - Decision (2025-12-30): Keep this shipped ExecPlan archived (not active) and keep any remaining follow-ups in a separate ExecPlan if/when we decide to pursue them.
   Rationale: Keeps “active” plans actionable and prevents stale shipped plans from drifting out of sync with their referenced artifact paths.
+  Date/Author: 2025-12-30 / agent
+
+- Decision (2025-12-30): This ExecPlan was intentionally reopened to execute the RCA remediation items; keep it active until those follow-ups are complete, then re-archive it.
+  Rationale: Preserves the original “shipped” record while allowing the follow-up work to be tracked and executed in a single place (per user request).
   Date/Author: 2025-12-30 / agent
 
 ## Outcomes & Retrospective
@@ -343,6 +351,10 @@ Recovery:
 - (2025-12-30 08:09) Local verification: `npm run lint`.
 - (2025-12-30 08:10) Local verification: `npm run build`.
 - (2025-12-30 08:12) Added unit test for blank/whitespace overrides; re-verified: `npm test` (24 pass, 1 skipped), `npm run lint`, `npm run build`.
+- (2025-12-30 10:49) Fresh verification logs (this execution pass):
+  - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1049_npm-test.log`
+  - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1049_npm-run-lint.log`
+  - `.agent/execplans/artifacts/2025-12-30_autopilot-per-job-thinking-level-overrides/verification_2025-12-30_1049_npm-run-build.log`
 
 ## Interfaces and Dependencies
 
