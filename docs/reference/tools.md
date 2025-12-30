@@ -16,7 +16,7 @@ Spawn a new specialist Codex sub-agent run via `codex exec`, writing a run direc
 - `cwd`: string (required)
 - `role`: string (default `"specialist"`)
 - `model`: string (optional; forwarded as `codex exec -c model="..."`)
-- `reasoning_effort`: string (optional; forwarded as `codex exec -c model_reasoning_effort="..."`)
+- `reasoning_effort`: string (optional; forwarded as `codex exec -c model_reasoning_effort="..."`; if omitted and `config_overrides` doesn’t already set `model_reasoning_effort`, the server uses `CODEX_DELEGATE_REASONING_EFFORT` when set)
 - `config_overrides`: string[] (optional; forwarded as `codex exec -c <override>`)
 - `skills_mode`: `"auto" | "explicit" | "none"` (default `"auto"`)
 - `skills`: string[] (only used when `skills_mode="explicit"`)

@@ -135,6 +135,9 @@ If you want to control reasoning effort for a single run, pass either:
 - `reasoning_effort`: forwarded as `codex exec -c model_reasoning_effort="..."`, or
 - `config_overrides`: forwarded as `codex exec -c <override>` (advanced; lets you set multiple keys).
 
+Optional default (server process):
+- `CODEX_DELEGATE_REASONING_EFFORT`: if set, and you do **not** pass `reasoning_effort` and do **not** include a `model_reasoning_effort=...` entry in `config_overrides`, the server injects `codex exec -c model_reasoning_effort="..."` automatically.
+
 ## Where results and logs go
 
 Every tool call returns a `run_dir` and writes artifacts under:

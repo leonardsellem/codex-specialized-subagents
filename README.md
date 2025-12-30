@@ -102,7 +102,7 @@ If you prefer explicit tool usage, tell Codex to call one of:
 - `delegate_run` (single sub-agent run)
 - `delegate_resume` (resume a prior sub-agent thread)
 
-Optional (advanced): for `delegate_run` / `delegate_resume`, you can pass `reasoning_effort` (maps to `codex exec -c model_reasoning_effort="..."`) or raw `config_overrides` (maps to `codex exec -c <override>`).
+Optional (advanced): for `delegate_run` / `delegate_resume`, you can pass `reasoning_effort` (maps to `codex exec -c model_reasoning_effort="..."`) or raw `config_overrides` (maps to `codex exec -c <override>`). If you want a default for manual runs, set `CODEX_DELEGATE_REASONING_EFFORT` on the MCP server process (only applies when `reasoning_effort` is omitted and `config_overrides` does not already set `model_reasoning_effort`).
 
 ## Skills
 
