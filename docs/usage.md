@@ -98,6 +98,7 @@ If an env var is unset/empty, the server does not override the model for that th
 ```bash
 codex mcp add codex-specialized-subagents \
   --env CODEX_AUTOPILOT_MODEL_LOW=<MODEL_ID> \
+  --env CODEX_AUTOPILOT_MODEL_MEDIUM=<MODEL_ID> \
   --env CODEX_AUTOPILOT_MODEL_HIGH=<MODEL_ID> \
   -- node "$(pwd)/dist/cli.js"
 ```
@@ -106,6 +107,7 @@ codex mcp add codex-specialized-subagents \
 
 ```bash
 export CODEX_AUTOPILOT_MODEL_LOW=<MODEL_ID>
+export CODEX_AUTOPILOT_MODEL_MEDIUM=<MODEL_ID>
 export CODEX_AUTOPILOT_MODEL_HIGH=<MODEL_ID>
 npm run dev
 ```
