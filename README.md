@@ -18,6 +18,7 @@ Each tool call writes a run directory under `${CODEX_HOME:-$HOME/.codex}/delegat
 
 - Node.js `>=20` (see `package.json#engines`)
 - `npm`
+- `mise` (recommended): installs the pinned runtime from `mise.toml`
 - `codex` CLI on your PATH and authenticated (required for real delegation runs)
 
 Optional:
@@ -28,7 +29,16 @@ Optional:
 From the repo root (installs deps + builds `dist/`):
 
 ```bash
-npm install
+# Recommended: install the pinned runtime (see mise.toml)
+mise install
+
+# Drift check (lockfiles + pins)
+./toolchain-check.sh
+
+# Install deps from lockfile
+npm ci
+
+# Build
 npm run build
 ```
 

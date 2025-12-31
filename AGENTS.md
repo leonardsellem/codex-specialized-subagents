@@ -63,6 +63,15 @@ As the repo grows:
 
 Default: list only the 4–10 skills you expect to use on this repo (don’t dump the entire global catalog).
 
+## Dependency hygiene
+- Runtimes: `mise.toml` (run `mise install`)
+- Drift check: `./toolchain-check.sh` (run locally and in CI)
+- Node: `package.json#packageManager` is pinned; prefer `npm ci` (lockfile-driven)
+- Avoid global installs for repo tooling (use `npm run ...`)
+
+## Exceptions
+- (none yet)
+
 ## Definition of done
 - tests/checks pass (or you state what ran + why not)
 - behavior verified with evidence (example/screenshot/log)
