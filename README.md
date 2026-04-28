@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/leonardsellem-codex-specialized-subagents-badge.png)](https://mseep.ai/app/leonardsellem-codex-specialized-subagents)
+
 # codex-specialized-subagents
 
 Artifact-first sub-agent delegation for Codex CLI (MCP server).
